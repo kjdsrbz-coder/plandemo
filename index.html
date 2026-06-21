@@ -1,0 +1,2302 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>生鲜供应链计划 Agent</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --bg: #f5f7fa;
+      --surface: #ffffff;
+      --surface-muted: #f8fafc;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --radius: 12px;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      --nav-height: 60px;
+      --side-width: 220px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 1440px;
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    button, input, select { font: inherit; }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: var(--side-width) 1fr;
+      grid-template-rows: var(--nav-height) 1fr;
+      height: 100vh;
+    }
+
+    .topbar {
+      grid-column: 1 / 3;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .brand-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .topbar-meta {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .env-tag {
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: var(--primary);
+      background: #eff6ff;
+      border: 1px solid rgba(37, 99, 235, 0.16);
+      font-weight: 600;
+    }
+
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 18px 12px;
+    }
+
+    .menu-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      color: #334155;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.15s ease, color 0.15s ease;
+    }
+
+    .menu-item:hover { background: #f8fafc; }
+    .menu-item.active {
+      background: #eff6ff;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .menu-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      opacity: 0.7;
+    }
+
+    .content {
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .page {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .panel-subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+
+    .filters {
+      padding: 16px 18px 18px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr)) 160px;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .field-control, .field select {
+      width: 100%;
+      height: 38px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      outline: none;
+    }
+
+    .field-control:focus, .field select:focus {
+      border-color: rgba(37, 99, 235, 0.45);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+    }
+
+    .primary-btn, .secondary-btn, .mini-btn {
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .primary-btn {
+      height: 38px;
+      padding: 0 14px;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .primary-btn:hover { background: var(--primary-dark); }
+
+    .secondary-btn {
+      height: 38px;
+      padding: 0 14px;
+      background: #fff;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .secondary-btn:hover, .mini-btn:hover { background: #f8fafc; }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .metric-card {
+      padding: 16px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .metric-label { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+    .metric-value { font-size: 26px; font-weight: 700; margin-bottom: 10px; }
+    .metric-trend { display: inline-flex; gap: 6px; font-size: 12px; color: var(--muted); }
+    .trend-up { color: var(--success); }
+    .trend-down { color: var(--danger); }
+
+    .module-grid {
+      padding: 16px 18px 18px;
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .module-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      padding: 14px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+
+    .module-card:hover {
+      border-color: rgba(37, 99, 235, 0.24);
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .module-card.active {
+      border-color: rgba(37, 99, 235, 0.28);
+      background: #eff6ff;
+      box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.08);
+    }
+
+    .module-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .module-items {
+      display: grid;
+      gap: 8px;
+    }
+
+    .module-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .module-item strong {
+      color: #111827;
+      font-weight: 600;
+    }
+
+    .steps-wrap { padding: 18px; }
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      grid-auto-rows: 1fr;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .step {
+      min-height: 88px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 14px 12px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      position: relative;
+    }
+
+    .step.active {
+      border-color: rgba(37, 99, 235, 0.28);
+      background: #eff6ff;
+    }
+
+    .step::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      right: -11px;
+      width: 12px;
+      height: 1px;
+      background: #cbd5e1;
+    }
+
+    .step:last-child::after { display: none; }
+    .step-index {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      color: #475569;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .step.active .step-index { background: var(--primary); color: #fff; }
+    .step-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+    .step-note { font-size: 12px; color: var(--muted); line-height: 1.45; }
+
+    .workspace { display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+    .table-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--border);
+      overflow: auto;
+    }
+
+    .tab-btn {
+      height: 40px;
+      padding: 0 16px;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      white-space: nowrap;
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-tools {
+      padding: 12px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-muted);
+    }
+
+    .tab-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .meta-badge {
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .table-wrap { overflow: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 0 12px;
+      border-bottom: 1px solid #edf2f7;
+      text-align: left;
+      height: 48px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f8fafc;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    tbody tr { cursor: pointer; transition: background-color 0.12s ease; }
+    tbody tr:hover { background: #f8fbff; }
+    tbody tr.selected { background: #eff6ff; box-shadow: inset 3px 0 0 var(--primary); }
+
+    .doc-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      line-height: 1.2;
+    }
+
+    .doc-no { font-weight: 700; color: #1f2937; }
+    .doc-sub { font-size: 12px; color: var(--muted); }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 52px;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .status-pending { background: rgba(37, 99, 235, 0.08); color: var(--primary); border-color: rgba(37, 99, 235, 0.16); }
+    .status-adjusted { background: rgba(245, 158, 11, 0.1); color: #b45309; border-color: rgba(245, 158, 11, 0.16); }
+    .status-confirmed { background: rgba(22, 163, 74, 0.08); color: var(--success); border-color: rgba(22, 163, 74, 0.16); }
+    .status-closed { background: #f3f4f6; color: #6b7280; border-color: #e5e7eb; }
+    .status-processing { background: rgba(14, 165, 233, 0.08); color: #0369a1; border-color: rgba(14, 165, 233, 0.16); }
+    .risk-high { background: rgba(220, 38, 38, 0.08); color: var(--danger); border-color: rgba(220, 38, 38, 0.16); }
+    .risk-medium { background: rgba(245, 158, 11, 0.1); color: #b45309; border-color: rgba(245, 158, 11, 0.16); }
+    .risk-low { background: rgba(22, 163, 74, 0.08); color: var(--success); border-color: rgba(22, 163, 74, 0.16); }
+
+    .mini-btns { display: flex; gap: 6px; }
+    .mini-btn {
+      height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: #334155;
+      font-size: 12px;
+    }
+
+    .mini-btn[disabled], .primary-btn[disabled], .secondary-btn[disabled] {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+
+    .bottom-panels {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .tab-panel { display: none; padding: 16px 18px 18px; }
+    .tab-panel.active { display: block; }
+
+    .source-block + .source-block { margin-top: 16px; }
+    .inline-table-title { margin: 0 0 10px; font-size: 13px; font-weight: 700; color: #334155; }
+
+    .feedback-loop { padding: 16px 18px 18px; }
+    .loop-steps {
+      display: grid;
+      grid-template-columns: repeat(9, minmax(0, 1fr));
+      gap: 10px;
+      align-items: center;
+    }
+
+    .loop-step {
+      min-height: 88px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .loop-step-title { font-size: 13px; font-weight: 700; }
+    .loop-step-value { font-size: 18px; font-weight: 700; color: var(--primary); }
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .modal-mask, .drawer-mask {
+      position: fixed;
+      inset: 0;
+      display: none;
+      z-index: 40;
+    }
+
+    .modal-mask.show { display: flex; align-items: center; justify-content: center; background: rgba(15, 23, 42, 0.34); }
+    .drawer-mask.show { display: flex; justify-content: flex-end; background: rgba(15, 23, 42, 0.28); }
+
+    .modal {
+      width: 420px;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, 0.22);
+      border: 1px solid #dbe3ee;
+      overflow: hidden;
+    }
+
+    .modal-header, .modal-footer {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-footer {
+      border-bottom: none;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .modal-title { font-size: 15px; font-weight: 700; }
+    .modal-body { padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+    .drawer-panel {
+      width: 520px;
+      height: 100vh;
+      background: #fff;
+      border-left: 1px solid var(--border);
+      box-shadow: -10px 0 30px rgba(15, 23, 42, 0.12);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .drawer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .drawer-title { font-size: 15px; font-weight: 700; }
+    .drawer-close {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: #475569;
+      cursor: pointer;
+    }
+
+    .drawer-body {
+      flex: 1;
+      overflow: auto;
+      padding: 16px 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .detail-section {
+      border: 1px solid #eef2f7;
+      border-radius: 10px;
+      background: var(--surface-muted);
+      padding: 14px;
+    }
+
+    .detail-section h4 {
+      margin: 0 0 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 14px;
+    }
+
+    .detail-item .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .detail-item .value {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .link-chain {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .link-chip {
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: #fff;
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      font-size: 12px;
+      color: #334155;
+      cursor: pointer;
+    }
+
+    .toast-wrap {
+      position: fixed;
+      top: 18px;
+      right: 24px;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      min-width: 320px;
+      max-width: 420px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: #111827;
+      color: #fff;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.2);
+      font-size: 13px;
+      opacity: 0;
+      transform: translateY(-6px);
+      animation: toast-in 0.2s ease forwards;
+    }
+
+    @keyframes toast-in {
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">SC</span>
+        <span>生鲜供应链计划 Agent</span>
+      </div>
+      <div class="topbar-meta">
+        <span id="todayDate"></span>
+        <span>当前用户：采购计划员 江鑫</span>
+        <span class="env-tag">Demo</span>
+      </div>
+    </header>
+
+    <aside class="sidebar">
+      <div class="menu-group" id="sideMenu">
+        <div class="menu-item active" data-module="forecast"><span class="menu-dot"></span><span>需求预测</span></div>
+        <div class="menu-item" data-module="purchase"><span class="menu-dot"></span><span>采购计划</span></div>
+        <div class="menu-item" data-module="replenishment"><span class="menu-dot"></span><span>补货建议</span></div>
+        <div class="menu-item" data-module="inventory"><span class="menu-dot"></span><span>库存管理</span></div>
+        <div class="menu-item" data-module="supplier"><span class="menu-dot"></span><span>供应商管理</span></div>
+        <div class="menu-item" data-module="fulfillment"><span class="menu-dot"></span><span>履约反馈</span></div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="page">
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">计划筛选</div>
+              <div class="panel-subtitle">按日期、城市、仓网、品类与计划周期生成 Agent 业务单据</div>
+            </div>
+          </div>
+          <div class="filters">
+            <div class="field">
+              <label>日期</label>
+              <input id="filterDate" class="field-control" type="date" value="2026-06-22" />
+            </div>
+            <div class="field">
+              <label>城市</label>
+              <select id="filterCity">
+                <option value="all">全部城市</option>
+                <option value="福州">福州</option>
+                <option value="广州">广州</option>
+                <option value="深圳">深圳</option>
+                <option value="上海">上海</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>仓/门店</label>
+              <select id="filterLocation">
+                <option value="all">全部仓/门店</option>
+                <option value="福州 A 前置仓">福州 A 前置仓</option>
+                <option value="福州 B 前置仓">福州 B 前置仓</option>
+                <option value="广州 C 前置仓">广州 C 前置仓</option>
+                <option value="深圳 D 前置仓">深圳 D 前置仓</option>
+                <option value="上海盒马 XX 门店">上海盒马 XX 门店</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>品类</label>
+              <select id="filterCategory">
+                <option value="all">全部品类</option>
+                <option value="蔬菜">蔬菜</option>
+                <option value="水果">水果</option>
+                <option value="肉禽蛋">肉禽蛋</option>
+                <option value="乳品">乳品</option>
+                <option value="水产">水产</option>
+                <option value="熟食">熟食</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>计划周期</label>
+              <select id="filterCycle">
+                <option value="明日">明日</option>
+                <option value="未来3天">未来 3 天</option>
+                <option value="未来7天">未来 7 天</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>单据状态</label>
+              <select id="filterStatus">
+                <option value="all">全部状态</option>
+                <option value="待确认">待确认</option>
+                <option value="已调整">已调整</option>
+                <option value="已确认">已确认</option>
+                <option value="处理中">处理中</option>
+                <option value="已关闭">已关闭</option>
+              </select>
+            </div>
+            <button id="generateBtn" class="primary-btn">生成计划建议</button>
+          </div>
+        </section>
+
+        <section class="metrics" id="metricsRow"></section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">业务单据工作台</div>
+              <div class="panel-subtitle">按功能模块查看 Agent 生成的单据、状态流转和执行单据</div>
+            </div>
+          </div>
+          <div class="module-grid" id="moduleGrid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">Agent 决策链路</div>
+              <div class="panel-subtitle">当前处理进度：人工确认</div>
+            </div>
+          </div>
+          <div class="steps-wrap">
+            <div class="steps" id="stepsRow"></div>
+          </div>
+        </section>
+
+        <section class="workspace">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title" id="workbenchTitle">需求预测 · 业务单据</div>
+                <div class="panel-subtitle" id="workbenchSummary">展示当前模块下的业务单据、关联关系和可执行操作</div>
+              </div>
+              <div class="table-actions">
+                <button id="submitExecutionBtn" class="primary-btn">提交执行</button>
+                <button id="resetFilterBtn" class="secondary-btn">重置筛选</button>
+              </div>
+            </div>
+            <div class="tabs" id="documentTabs"></div>
+            <div class="tab-tools">
+              <div class="tab-meta" id="tabMeta"></div>
+              <div class="tab-meta">
+                <span class="meta-badge" id="currentModuleBadge"></span>
+                <span class="meta-badge" id="currentTabBadge"></span>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 172px;">单据编号</th>
+                    <th style="width: 150px;">来源单据</th>
+                    <th style="width: 180px;">业务对象</th>
+                    <th style="width: 160px;">数量 / 金额 / 风险</th>
+                    <th style="width: 98px;">状态</th>
+                    <th style="width: 138px;">创建时间</th>
+                    <th style="width: 220px;">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="documentTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="bottom-panels">
+          <section class="panel">
+            <div class="tabs">
+              <button class="tab-btn active" data-bottom-tab="sources">数据来源</button>
+              <button class="tab-btn" data-bottom-tab="records">执行记录</button>
+              <button class="tab-btn" data-bottom-tab="rules">风险规则</button>
+            </div>
+            <div id="bottom-sources" class="tab-panel active"></div>
+            <div id="bottom-records" class="tab-panel"></div>
+            <div id="bottom-rules" class="tab-panel"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <div class="panel-title">反馈闭环</div>
+                <div class="panel-subtitle">实际销量 → 预测偏差分析 → 人工调整记录 → 规则修正 → 下次预测优化</div>
+              </div>
+            </div>
+            <div class="feedback-loop">
+              <div class="loop-steps" id="feedbackLoop"></div>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div id="adjustModalMask" class="modal-mask">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title">调整单据建议</div></div>
+      <div class="modal-body">
+        <div class="field">
+          <label id="adjustDocLabel">建议数量</label>
+          <input id="adjustQty" class="field-control" type="number" min="0" step="1" />
+        </div>
+        <div class="field">
+          <label>备注</label>
+          <input id="adjustRemark" class="field-control" type="text" value="人工调整" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="adjustCancel" class="secondary-btn">取消</button>
+        <button id="adjustSave" class="primary-btn">保存调整</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="detailDrawerMask" class="drawer-mask">
+    <aside class="drawer-panel">
+      <div class="drawer-head">
+        <div>
+          <div class="drawer-title" id="drawerTitle">单据详情</div>
+          <div class="panel-subtitle" id="drawerHint"></div>
+        </div>
+        <button id="drawerClose" class="drawer-close" type="button">×</button>
+      </div>
+      <div id="drawerBody" class="drawer-body"></div>
+    </aside>
+  </div>
+
+  <div id="toastWrap" class="toast-wrap"></div>
+
+  <script>
+    const metrics = [
+      { key: "skuCount", label: "预测 SKU 数", value: "128", trend: "+3.2%", trendClass: "trend-up", note: "较昨日" },
+      { key: "accuracy", label: "平均预测准确率", value: "86.4%", trend: "+1.6%", trendClass: "trend-up", note: "较昨日" },
+      { key: "stockoutRisk", label: "缺货风险 SKU", value: "16", trend: "-1.1%", trendClass: "trend-down", note: "较昨日" },
+      { key: "slowRisk", label: "滞销/临期风险 SKU", value: "9", trend: "+0.7%", trendClass: "trend-down", note: "较昨日" },
+      { key: "purchaseAmount", label: "建议采购金额", value: "¥128,650", trend: "+4.9%", trendClass: "trend-up", note: "较昨日" },
+      { key: "orders", label: "建议补货单数", value: "42", trend: "+2.0%", trendClass: "trend-up", note: "较昨日" }
+    ];
+
+    const steps = [
+      { title: "需求预测", note: "销量预测与偏差校验" },
+      { title: "库存校验", note: "库存、在途与临期识别" },
+      { title: "采购计划", note: "采购缺口与供应商匹配" },
+      { title: "补货建议", note: "仓/店补货与调拨建议" },
+      { title: "风险校验", note: "价格、质量与履约风险" },
+      { title: "人工确认", note: "计划员确认、调整和转单", active: true },
+      { title: "执行回写", note: "生成执行单据并回写结果" }
+    ];
+
+    const modules = {
+      forecast: {
+        name: "需求预测",
+        tabs: [
+          { key: "forecastOrder", label: "需求预测单" },
+          { key: "deviationOrder", label: "预测偏差分析单" }
+        ]
+      },
+      purchase: {
+        name: "采购计划",
+        tabs: [
+          { key: "purchasePlanOrder", label: "采购计划单" },
+          { key: "purchaseRequestOrder", label: "采购申请单" },
+          { key: "purchaseOrder", label: "采购订单" }
+        ]
+      },
+      replenishment: {
+        name: "补货建议",
+        tabs: [
+          { key: "replenishmentSuggestionOrder", label: "补货建议单" },
+          { key: "replenishmentTaskOrder", label: "补货任务单" },
+          { key: "transferSuggestionOrder", label: "调拨建议单" }
+        ]
+      },
+      inventory: {
+        name: "库存管理",
+        tabs: [
+          { key: "inventoryAlertOrder", label: "库存预警单" },
+          { key: "inventoryCountOrder", label: "库存盘点单" },
+          { key: "expiryHandlingOrder", label: "临期处理单" }
+        ]
+      },
+      supplier: {
+        name: "供应商管理",
+        tabs: [
+          { key: "supplierScoreOrder", label: "供应商评分单" },
+          { key: "supplierAbnormalOrder", label: "供应商异常单" },
+          { key: "priceAbnormalOrder", label: "价格异常单" }
+        ]
+      },
+      fulfillment: {
+        name: "履约反馈",
+        tabs: [
+          { key: "fulfillmentAbnormalOrder", label: "履约异常单" },
+          { key: "stockoutSubstitutionOrder", label: "缺货替换单" },
+          { key: "aftersaleFeedbackOrder", label: "售后反馈单" }
+        ]
+      }
+    };
+
+    const mockData = {
+      forecastOrder: [
+        {
+          id: "FP20260622001",
+          sourceId: "-",
+          module: "forecast",
+          tabKey: "forecastOrder",
+          object: "福州 A 前置仓",
+          objectSub: "明日 / 32 SKU",
+          valueSummary: "预测销量 4,860",
+          status: "待确认",
+          createdAt: "2026-06-22 08:12",
+          city: "福州",
+          location: "福州 A 前置仓",
+          category: "综合",
+          forecastDate: "2026-06-22",
+          forecastCycle: "明日",
+          skuCount: 32,
+          forecastSales: 4860,
+          confidence: "86.4%",
+          generateMode: "Agent 自动生成",
+          riskLevel: "中",
+          links: ["PP20260622001", "RP20260622001", "IA20260622001"],
+          agentResult: [
+            ["预测总销量", "4,860"],
+            ["平均置信度", "86.4%"],
+            ["预测周期", "明日"],
+            ["SKU 数量", "32"]
+          ],
+          riskJudgement: [
+            ["缺货截断修正", "已启用"],
+            ["促销影响", "早餐专区 +9%"],
+            ["天气影响", "中雨 +6%"],
+            ["异常订单", "无明显异常"]
+          ],
+          suggestedAction: [
+            ["后续动作", "生成采购计划单与补货建议单"],
+            ["人工要求", "需确认高频刚需品类"],
+            ["回写状态", "待回写"]
+          ],
+          adjustments: [],
+          availableActions: ["view", "confirm"]
+        },
+        {
+          id: "FP20260622002",
+          sourceId: "-",
+          module: "forecast",
+          tabKey: "forecastOrder",
+          object: "广州 C 前置仓",
+          objectSub: "未来 3 天 / 28 SKU",
+          valueSummary: "预测销量 7,920",
+          status: "已确认",
+          createdAt: "2026-06-22 08:16",
+          city: "广州",
+          location: "广州 C 前置仓",
+          category: "综合",
+          forecastDate: "2026-06-22",
+          forecastCycle: "未来3天",
+          skuCount: 28,
+          forecastSales: 7920,
+          confidence: "83.7%",
+          generateMode: "Agent 自动生成",
+          riskLevel: "低",
+          links: ["PP20260622002", "RP20260622003"],
+          agentResult: [["预测总销量", "7,920"], ["平均置信度", "83.7%"], ["预测周期", "未来 3 天"], ["SKU 数量", "28"]],
+          riskJudgement: [["天气影响", "高温 +4%"], ["促销影响", "乳品活动 +6%"], ["人工修正", "已确认"], ["回写状态", "待回写"]],
+          suggestedAction: [["后续动作", "维持采购节奏"], ["人工要求", "已确认"], ["回写状态", "待回写"]],
+          adjustments: [],
+          availableActions: ["view"]
+        },
+        {
+          id: "FP20260622003",
+          sourceId: "-",
+          module: "forecast",
+          tabKey: "forecastOrder",
+          object: "上海盒马 XX 门店",
+          objectSub: "明日 / 36 SKU",
+          valueSummary: "预测销量 5,680",
+          status: "已关闭",
+          createdAt: "2026-06-22 08:22",
+          city: "上海",
+          location: "上海盒马 XX 门店",
+          category: "综合",
+          forecastDate: "2026-06-22",
+          forecastCycle: "明日",
+          skuCount: 36,
+          forecastSales: 5680,
+          confidence: "88.1%",
+          generateMode: "Agent 自动生成",
+          riskLevel: "低",
+          links: ["PP20260622003", "PR20260622001"],
+          agentResult: [["预测总销量", "5,680"], ["平均置信度", "88.1%"], ["预测周期", "明日"], ["SKU 数量", "36"]],
+          riskJudgement: [["门店陈列影响", "已识别"], ["履约波峰", "18:30-20:30"], ["异常订单", "无"], ["回写状态", "已回写"]],
+          suggestedAction: [["后续动作", "结束当前预测单"], ["人工要求", "无需操作"], ["回写状态", "已回写"]],
+          adjustments: [],
+          availableActions: ["view", "close"]
+        }
+      ],
+      deviationOrder: [
+        {
+          id: "DA20260622001",
+          sourceId: "FP20260622001",
+          module: "forecast",
+          tabKey: "deviationOrder",
+          object: "福州 A 前置仓",
+          objectSub: "鸡蛋 / 草莓 / 生菜",
+          valueSummary: "偏差率 8.6%",
+          status: "待确认",
+          createdAt: "2026-06-22 09:10",
+          riskLevel: "中",
+          links: ["FP20260622001"],
+          basicInfo: [["实际销售日期", "2026-06-21"], ["预测销量", "4,540"], ["实际销量", "4,930"], ["偏差率", "8.6%"]],
+          agentResult: [["偏差原因", "促销影响"], ["缺货截断", "鸡蛋 2 小时"], ["天气扰动", "中雨"], ["模型回写", "待分析"]],
+          riskJudgement: [["是否回写模型", "待确认"], ["人工调整", "待补充"], ["异常订单", "无"], ["置信度偏移", "+1.4%"]],
+          suggestedAction: [["建议动作", "完成偏差归因后回写模型"], ["人工要求", "补充门店促销备注"]],
+          adjustments: [],
+          availableActions: ["view", "confirm"]
+        }
+      ],
+      purchasePlanOrder: [
+        {
+          id: "PP20260622001",
+          sourceId: "FP20260622001",
+          module: "purchase",
+          tabKey: "purchasePlanOrder",
+          object: "蔬菜 / 肉禽蛋",
+          objectSub: "福州",
+          valueSummary: "采购金额 ¥42,680",
+          status: "待确认",
+          createdAt: "2026-06-22 08:30",
+          riskLevel: "高",
+          links: ["FP20260622001", "PR20260622002", "PA20260622001"],
+          basicInfo: [["计划日期", "2026-06-22"], ["城市", "福州"], ["品类", "蔬菜 / 肉禽蛋"], ["SKU 数量", "18"]],
+          agentResult: [["建议采购总量", "1,240"], ["预计采购金额", "¥42,680"], ["推荐供应商数", "6"], ["风险 SKU", "5"]],
+          riskJudgement: [["价格风险", "鸡蛋报价上涨"], ["质量风险", "无高风险"], ["临期冲突", "草莓暂停采购"], ["仓容影响", "低"]],
+          suggestedAction: [["建议动作", "确认后转采购申请单"], ["推荐供应商", "福州蛋品联采中心等"], ["期望到货", "2026-06-22 05:30"]],
+          adjustments: [],
+          availableActions: ["view", "confirm", "adjust", "transfer"]
+        },
+        {
+          id: "PP20260622002",
+          sourceId: "FP20260622002",
+          module: "purchase",
+          tabKey: "purchasePlanOrder",
+          object: "水果 / 乳品",
+          objectSub: "广州",
+          valueSummary: "采购金额 ¥58,940",
+          status: "已调整",
+          createdAt: "2026-06-22 08:36",
+          riskLevel: "中",
+          links: ["FP20260622002", "RP20260622003"],
+          basicInfo: [["计划日期", "2026-06-22"], ["城市", "广州"], ["品类", "水果 / 乳品"], ["SKU 数量", "14"]],
+          agentResult: [["建议采购总量", "980"], ["预计采购金额", "¥58,940"], ["推荐供应商数", "4"], ["风险 SKU", "4"]],
+          riskJudgement: [["价格风险", "蓝莓活动期"], ["质量风险", "低"], ["临期冲突", "无"], ["仓容影响", "中"]],
+          suggestedAction: [["建议动作", "已调整后待转申请"], ["期望到货", "2026-06-22 06:00"]],
+          adjustments: [["2026-06-22 08:45", "采购计划员 江鑫", "蓝莓采购量从 210 调整至 180"]],
+          availableActions: ["view", "confirm", "transfer"]
+        },
+        {
+          id: "PP20260622003",
+          sourceId: "FP20260622003",
+          module: "purchase",
+          tabKey: "purchasePlanOrder",
+          object: "水产 / 熟食",
+          objectSub: "上海",
+          valueSummary: "采购金额 ¥27,030",
+          status: "已关闭",
+          createdAt: "2026-06-22 08:42",
+          riskLevel: "中",
+          links: ["FP20260622003", "PR20260622001", "PO20260622001"],
+          basicInfo: [["计划日期", "2026-06-22"], ["城市", "上海"], ["品类", "水产 / 熟食"], ["SKU 数量", "9"]],
+          agentResult: [["建议采购总量", "320"], ["预计采购金额", "¥27,030"], ["推荐供应商数", "3"], ["风险 SKU", "2"]],
+          riskJudgement: [["价格风险", "三文鱼波动"], ["质量风险", "海润冷链需观察"], ["临期冲突", "熟食减量"], ["仓容影响", "低"]],
+          suggestedAction: [["建议动作", "已转采购申请单"], ["期望到货", "2026-06-22 09:00"]],
+          adjustments: [],
+          availableActions: ["view"]
+        }
+      ],
+      purchaseRequestOrder: [
+        {
+          id: "PR20260622001",
+          sourceId: "PP20260622003",
+          module: "purchase",
+          tabKey: "purchaseRequestOrder",
+          object: "三文鱼切片",
+          objectSub: "上海盒马 XX 门店",
+          valueSummary: "申请金额 ¥7,650",
+          status: "处理中",
+          createdAt: "2026-06-22 08:56",
+          riskLevel: "中",
+          links: ["PP20260622003", "PO20260622001"],
+          basicInfo: [["申请部门", "采购计划部"], ["申请人", "江鑫"], ["SKU", "SKU006"], ["申请采购量", "85"]],
+          agentResult: [["推荐供应商", "福建海鲜直供"], ["预计采购金额", "¥7,650"], ["期望到货", "2026-06-22 09:00"], ["审批状态", "审批中"]],
+          riskJudgement: [["价格风险", "中"], ["供应商质量风险", "需关注"], ["审批风险", "无"], ["履约影响", "门店陈列 + 到家"]],
+          suggestedAction: [["建议动作", "审批通过后生成采购订单"]],
+          adjustments: [],
+          availableActions: ["view", "transfer"]
+        },
+        {
+          id: "PR20260622002",
+          sourceId: "PP20260622001",
+          module: "purchase",
+          tabKey: "purchaseRequestOrder",
+          object: "鸡蛋 30枚",
+          objectSub: "福州 A 前置仓",
+          valueSummary: "申请金额 ¥1,840",
+          status: "待确认",
+          createdAt: "2026-06-22 09:02",
+          riskLevel: "低",
+          links: ["PP20260622001", "FP20260622001"],
+          basicInfo: [["申请部门", "采购计划部"], ["申请人", "江鑫"], ["SKU", "SKU001"], ["申请采购量", "230"]],
+          agentResult: [["推荐供应商", "福州蛋品联采中心"], ["预计采购金额", "¥1,840"], ["期望到货", "2026-06-22 05:30"], ["审批状态", "待提交"]],
+          riskJudgement: [["价格风险", "已提示"], ["供应商质量风险", "低"], ["审批风险", "无"], ["履约影响", "早餐高频"]],
+          suggestedAction: [["建议动作", "确认后提交采购订单"]],
+          adjustments: [],
+          availableActions: ["view", "confirm", "transfer"]
+        }
+      ],
+      purchaseOrder: [
+        {
+          id: "PO20260622001",
+          sourceId: "PR20260622001",
+          module: "purchase",
+          tabKey: "purchaseOrder",
+          object: "福建海鲜直供",
+          objectSub: "三文鱼切片",
+          valueSummary: "采购金额 ¥7,650",
+          status: "待确认",
+          createdAt: "2026-06-22 09:20",
+          riskLevel: "中",
+          links: ["PR20260622001", "PP20260622003"],
+          basicInfo: [["供应商", "福建海鲜直供"], ["SKU", "SKU006"], ["采购量", "85"], ["采购单价", "¥90"]],
+          agentResult: [["采购金额", "¥7,650"], ["预计到货", "2026-06-22 09:00"], ["订单状态", "待供应商确认"], ["来源单据", "PR20260622001"]],
+          riskJudgement: [["价格波动", "+3.2%"], ["质量风险", "需重点验收"], ["物流风险", "低"], ["履约影响", "高"]],
+          suggestedAction: [["建议动作", "等待供应商接单并跟踪到货"]],
+          adjustments: [],
+          availableActions: ["view", "close"]
+        }
+      ],
+      replenishmentSuggestionOrder: [
+        {
+          id: "RP20260622001",
+          sourceId: "FP20260622001",
+          module: "replenishment",
+          tabKey: "replenishmentSuggestionOrder",
+          object: "鸡蛋 30枚",
+          objectSub: "福州 A 前置仓",
+          valueSummary: "建议补货 230",
+          status: "待确认",
+          createdAt: "2026-06-22 08:34",
+          riskLevel: "高",
+          links: ["FP20260622001", "PP20260622001"],
+          basicInfo: [["当前库存", "28"], ["在途库存", "20"], ["预测销量", "86"], ["安全库存", "36"]],
+          agentResult: [["建议补货量", "230"], ["建议补货时间", "2026-06-22 04:30"], ["来源预测单", "FP20260622001"], ["来源采购计划", "PP20260622001"]],
+          riskJudgement: [["风险等级", "高"], ["风险类型", "缺货风险"], ["仓容影响", "低"], ["临期冲突", "无"]],
+          suggestedAction: [["建议动作", "确认后转补货任务单"]],
+          adjustments: [],
+          availableActions: ["view", "confirm", "adjust", "transfer"]
+        },
+        {
+          id: "RP20260622002",
+          sourceId: "FP20260622001",
+          module: "replenishment",
+          tabKey: "replenishmentSuggestionOrder",
+          object: "精品草莓",
+          objectSub: "福州 A 前置仓",
+          valueSummary: "建议补货 0",
+          status: "已关闭",
+          createdAt: "2026-06-22 08:35",
+          riskLevel: "高",
+          links: ["IA20260622001", "EX20260622001"],
+          basicInfo: [["当前库存", "36"], ["在途库存", "0"], ["预测销量", "18"], ["安全库存", "8"]],
+          agentResult: [["建议补货量", "0"], ["建议动作", "暂停补货"], ["来源预测单", "FP20260622001"], ["来源采购计划", "-"]],
+          riskJudgement: [["风险等级", "高"], ["风险类型", "临期风险"], ["售后反馈", "果面软化"], ["临期冲突", "高"]],
+          suggestedAction: [["建议动作", "转临期处理单"]],
+          adjustments: [],
+          availableActions: ["view"]
+        },
+        {
+          id: "RP20260622003",
+          sourceId: "FP20260622002",
+          module: "replenishment",
+          tabKey: "replenishmentSuggestionOrder",
+          object: "本地生菜",
+          objectSub: "广州 C 前置仓",
+          valueSummary: "建议补货 130",
+          status: "已调整",
+          createdAt: "2026-06-22 08:40",
+          riskLevel: "高",
+          links: ["RT20260622001", "PP20260622002"],
+          basicInfo: [["当前库存", "12"], ["在途库存", "4"], ["预测销量", "72"], ["安全库存", "28"]],
+          agentResult: [["建议补货量", "130"], ["建议补货时间", "2026-06-22 04:50"], ["来源预测单", "FP20260622002"], ["来源采购计划", "PP20260622002"]],
+          riskJudgement: [["风险等级", "高"], ["风险类型", "缺货风险"], ["仓容影响", "中"], ["临期冲突", "无"]],
+          suggestedAction: [["建议动作", "已调整后转补货任务单"]],
+          adjustments: [["2026-06-22 08:47", "采购计划员 江鑫", "补货量从 118 调整至 130"]],
+          availableActions: ["view", "confirm", "transfer"]
+        }
+      ],
+      replenishmentTaskOrder: [
+        {
+          id: "RT20260622001",
+          sourceId: "RP20260622003",
+          module: "replenishment",
+          tabKey: "replenishmentTaskOrder",
+          object: "中心仓 → 广州 C 前置仓",
+          objectSub: "本地生菜",
+          valueSummary: "补货量 130",
+          status: "处理中",
+          createdAt: "2026-06-22 09:08",
+          riskLevel: "中",
+          links: ["RP20260622003"],
+          basicInfo: [["来源仓", "广州中心仓"], ["目标仓/门店", "广州 C 前置仓"], ["SKU", "SKU003"], ["补货量", "130"]],
+          agentResult: [["计划出库", "2026-06-22 10:00"], ["计划到货", "2026-06-22 12:00"], ["执行状态", "配送中"], ["来源单据", "RP20260622003"]],
+          riskJudgement: [["执行风险", "低"], ["仓容风险", "低"], ["配送风险", "中"], ["履约影响", "正向"]],
+          suggestedAction: [["建议动作", "持续跟踪签收"]],
+          adjustments: [],
+          availableActions: ["view", "close"]
+        }
+      ],
+      transferSuggestionOrder: [
+        {
+          id: "TR20260622001",
+          sourceId: "-",
+          module: "replenishment",
+          tabKey: "transferSuggestionOrder",
+          object: "深圳 D → 广州 C",
+          objectSub: "蓝莓",
+          valueSummary: "调拨量 80",
+          status: "待确认",
+          createdAt: "2026-06-22 08:58",
+          riskLevel: "中",
+          links: ["PP20260622002"],
+          basicInfo: [["来源仓", "深圳 D 前置仓"], ["目标仓", "广州 C 前置仓"], ["SKU", "SKU009"], ["建议调拨量", "80"]],
+          agentResult: [["调拨原因", "滞销转移"], ["来源库存", "96"], ["目标库存", "14"], ["仓容影响", "低"]],
+          riskJudgement: [["风险等级", "中"], ["临期冲突", "无"], ["履约影响", "降低缺货"], ["运输风险", "低"]],
+          suggestedAction: [["建议动作", "确认后生成调拨任务"]],
+          adjustments: [],
+          availableActions: ["view", "confirm"]
+        }
+      ],
+      inventoryAlertOrder: [
+        {
+          id: "IA20260622001",
+          sourceId: "RP20260622002",
+          module: "inventory",
+          tabKey: "inventoryAlertOrder",
+          object: "精品草莓",
+          objectSub: "福州 A 前置仓",
+          valueSummary: "临期预警 / 高",
+          status: "待确认",
+          createdAt: "2026-06-22 08:50",
+          riskLevel: "高",
+          links: ["EX20260622001", "RP20260622002"],
+          basicInfo: [["当前库存", "36"], ["安全库存", "8"], ["预测销量", "18"], ["预计可售天数", "2.0 天"]],
+          agentResult: [["预警类型", "临期预警"], ["风险等级", "高"], ["处理建议", "折扣促销"], ["来源单据", "RP20260622002"]],
+          riskJudgement: [["临期数量", "120"], ["仓容风险", "低"], ["售后反馈", "有"], ["报损风险", "高"]],
+          suggestedAction: [["建议动作", "转临期处理单"]],
+          adjustments: [],
+          availableActions: ["view", "transfer"]
+        },
+        {
+          id: "IA20260622002",
+          sourceId: "FP20260622002",
+          module: "inventory",
+          tabKey: "inventoryAlertOrder",
+          object: "鸡胸肉",
+          objectSub: "深圳 D 前置仓",
+          valueSummary: "缺货预警 / 中",
+          status: "处理中",
+          createdAt: "2026-06-22 08:54",
+          riskLevel: "中",
+          links: ["RP20260622004"],
+          basicInfo: [["当前库存", "16"], ["安全库存", "20"], ["预测销量", "43"], ["预计可售天数", "0.6 天"]],
+          agentResult: [["预警类型", "缺货预警"], ["风险等级", "中"], ["处理建议", "生成补货建议单"], ["来源单据", "FP20260622002"]],
+          riskJudgement: [["缺货风险", "高峰前可能断货"], ["仓容风险", "低"], ["售后反馈", "无"], ["报损风险", "低"]],
+          suggestedAction: [["建议动作", "持续跟踪补货任务"]],
+          adjustments: [],
+          availableActions: ["view"]
+        }
+      ],
+      inventoryCountOrder: [
+        {
+          id: "IC20260622001",
+          sourceId: "-",
+          module: "inventory",
+          tabKey: "inventoryCountOrder",
+          object: "广州 C 前置仓",
+          objectSub: "盘点 26 SKU",
+          valueSummary: "差异数量 14",
+          status: "待确认",
+          createdAt: "2026-06-22 11:00",
+          riskLevel: "中",
+          links: [],
+          basicInfo: [["系统库存", "2,460"], ["实盘库存", "2,446"], ["差异数量", "14"], ["盘点人", "陈诚"]],
+          agentResult: [["差异原因", "分拣损耗"], ["复核状态", "待复核"], ["影响模块", "库存管理"], ["回写状态", "待确认"]],
+          riskJudgement: [["库存准确率", "99.4%"], ["履约影响", "低"], ["报损风险", "中"], ["审计风险", "低"]],
+          suggestedAction: [["建议动作", "完成复核后回写库存"]],
+          adjustments: [],
+          availableActions: ["view", "confirm"]
+        }
+      ],
+      expiryHandlingOrder: [
+        {
+          id: "EX20260622001",
+          sourceId: "IA20260622001",
+          module: "inventory",
+          tabKey: "expiryHandlingOrder",
+          object: "精品草莓",
+          objectSub: "福州 A 前置仓",
+          valueSummary: "临期数量 120",
+          status: "待确认",
+          createdAt: "2026-06-22 09:12",
+          riskLevel: "高",
+          links: ["IA20260622001"],
+          basicInfo: [["临期数量", "120"], ["剩余保质期", "1 天"], ["建议处理方式", "8 折促销"], ["预计减少损耗", "¥920"]],
+          agentResult: [["建议折扣", "8 折"], ["处理方式", "折扣促销"], ["处理窗口", "今日 14:00 前"], ["来源预警", "IA20260622001"]],
+          riskJudgement: [["损耗风险", "高"], ["售后风险", "中"], ["调拨可行性", "低"], ["员工内购", "备选"]],
+          suggestedAction: [["建议动作", "确认后执行促销处理"]],
+          adjustments: [],
+          availableActions: ["view", "confirm", "close"]
+        }
+      ],
+      supplierScoreOrder: [
+        {
+          id: "SS20260622001",
+          sourceId: "-",
+          module: "supplier",
+          tabKey: "supplierScoreOrder",
+          object: "福建生鲜一号",
+          objectSub: "主供",
+          valueSummary: "综合评分 91",
+          status: "已确认",
+          createdAt: "2026-06-22 07:40",
+          riskLevel: "低",
+          links: ["PP20260622001"],
+          basicInfo: [["评分周期", "近 7 日"], ["准时率", "96.5%"], ["质检合格率", "95.2%"], ["价格稳定性", "良好"]],
+          agentResult: [["批次损耗率", "1.1%"], ["售后投诉率", "0.6%"], ["综合评分", "91"], ["推荐等级", "主供"]],
+          riskJudgement: [["合作风险", "低"], ["供货稳定性", "高"], ["价格风险", "低"], ["质量风险", "低"]],
+          suggestedAction: [["建议动作", "维持主供资格"]],
+          adjustments: [],
+          availableActions: ["view"]
+        },
+        {
+          id: "SS20260622002",
+          sourceId: "-",
+          module: "supplier",
+          tabKey: "supplierScoreOrder",
+          object: "华南果蔬供应",
+          objectSub: "观察",
+          valueSummary: "综合评分 76",
+          status: "待确认",
+          createdAt: "2026-06-22 07:45",
+          riskLevel: "中",
+          links: ["SA20260622001"],
+          basicInfo: [["评分周期", "近 7 日"], ["准时率", "91.3%"], ["质检合格率", "88.6%"], ["价格稳定性", "一般"]],
+          agentResult: [["批次损耗率", "2.8%"], ["售后投诉率", "1.9%"], ["综合评分", "76"], ["推荐等级", "观察"]],
+          riskJudgement: [["合作风险", "中"], ["供货稳定性", "中"], ["价格风险", "中"], ["质量风险", "高"]],
+          suggestedAction: [["建议动作", "暂停作为主供应商"]],
+          adjustments: [],
+          availableActions: ["view", "confirm"]
+        }
+      ],
+      supplierAbnormalOrder: [
+        {
+          id: "SA20260622001",
+          sourceId: "SS20260622002",
+          module: "supplier",
+          tabKey: "supplierAbnormalOrder",
+          object: "华南果蔬供应",
+          objectSub: "精品草莓",
+          valueSummary: "影响 3 个前置仓",
+          status: "待确认",
+          createdAt: "2026-06-22 08:05",
+          riskLevel: "高",
+          links: ["PA20260622001", "PP20260622002"],
+          basicInfo: [["异常类型", "批次损耗高"], ["SKU", "精品草莓"], ["影响范围", "3 个前置仓"], ["处理建议", "降级观察"]],
+          agentResult: [["批次损耗率", "4.6%"], ["质检合格率", "88.6%"], ["关联采购计划", "PP20260622002"], ["关联价格异常", "PA20260622001"]],
+          riskJudgement: [["供应风险", "高"], ["质量风险", "高"], ["价格风险", "中"], ["履约影响", "中"]],
+          suggestedAction: [["建议动作", "通知供应商并限制采购"]],
+          adjustments: [],
+          availableActions: ["view", "confirm", "close"]
+        }
+      ],
+      priceAbnormalOrder: [
+        {
+          id: "PA20260622001",
+          sourceId: "SA20260622001",
+          module: "supplier",
+          tabKey: "priceAbnormalOrder",
+          object: "鸡蛋 30枚",
+          objectSub: "福州蛋品联采中心",
+          valueSummary: "涨幅 15.9%",
+          status: "待确认",
+          createdAt: "2026-06-22 08:14",
+          riskLevel: "高",
+          links: ["PP20260622001", "SA20260622001"],
+          basicInfo: [["当前报价", "¥8.0"], ["7 日均价", "¥6.9"], ["涨幅", "15.9%"], ["是否超阈值", "是"]],
+          agentResult: [["处理建议", "需人工确认价格风险"], ["关联采购计划", "PP20260622001"], ["供应商", "福州蛋品联采中心"], ["预警级别", "高"]],
+          riskJudgement: [["价格风险", "高"], ["替代供应商", "1 家可切换"], ["质量风险", "低"], ["履约影响", "中"]],
+          suggestedAction: [["建议动作", "确认后决定是否锁价采购"]],
+          adjustments: [],
+          availableActions: ["view", "confirm", "close"]
+        }
+      ],
+      fulfillmentAbnormalOrder: [
+        {
+          id: "FA20260622001",
+          sourceId: "-",
+          module: "fulfillment",
+          tabKey: "fulfillmentAbnormalOrder",
+          object: "订单 O202606220089",
+          objectSub: "福州 A 前置仓 / 鸡蛋",
+          valueSummary: "拣货失败",
+          status: "待确认",
+          createdAt: "2026-06-22 10:18",
+          riskLevel: "中",
+          links: ["SR20260622001", "FP20260622001"],
+          basicInfo: [["异常类型", "拣货失败"], ["影响订单数", "1"], ["责任环节", "仓内拣货"], ["门店", "福州 A 前置仓"]],
+          agentResult: [["异常原因", "库存不准"], ["关联预测单", "FP20260622001"], ["替代建议", "土鸡蛋 20枚"], ["回写状态", "待回写"]],
+          riskJudgement: [["履约风险", "中"], ["库存准确性风险", "中"], ["售后风险", "低"], ["补货风险", "中"]],
+          suggestedAction: [["建议动作", "生成缺货替换单并回写需求"]],
+          adjustments: [],
+          availableActions: ["view", "confirm"]
+        }
+      ],
+      stockoutSubstitutionOrder: [
+        {
+          id: "SR20260622001",
+          sourceId: "FA20260622001",
+          module: "fulfillment",
+          tabKey: "stockoutSubstitutionOrder",
+          object: "鸡蛋 30枚 → 土鸡蛋 20枚",
+          objectSub: "用户已接受",
+          valueSummary: "替换成功",
+          status: "已确认",
+          createdAt: "2026-06-22 10:26",
+          riskLevel: "低",
+          links: ["FA20260622001", "FP20260622001"],
+          basicInfo: [["原 SKU", "鸡蛋 30枚"], ["替换 SKU", "土鸡蛋 20枚"], ["替换原因", "缺货"], ["用户是否接受", "是"]],
+          agentResult: [["是否回写需求预测", "是"], ["替换影响", "早餐品类偏好调整"], ["状态", "已替换"], ["来源异常单", "FA20260622001"]],
+          riskJudgement: [["履约风险", "已解除"], ["用户体验风险", "低"], ["预测偏差影响", "需回写"], ["售后风险", "低"]],
+          suggestedAction: [["建议动作", "将替换记录回写模型"]],
+          adjustments: [],
+          availableActions: ["view"]
+        }
+      ],
+      aftersaleFeedbackOrder: [
+        {
+          id: "AF20260622001",
+          sourceId: "-",
+          module: "fulfillment",
+          tabKey: "aftersaleFeedbackOrder",
+          object: "精品草莓",
+          objectSub: "批次 B2026062107",
+          valueSummary: "退款金额 ¥128",
+          status: "待确认",
+          createdAt: "2026-06-22 10:42",
+          riskLevel: "高",
+          links: ["SA20260622001", "IA20260622001"],
+          basicInfo: [["门店", "福州 A 前置仓"], ["售后原因", "发霉"], ["退款金额", "¥128"], ["批次", "B2026062107"]],
+          agentResult: [["是否影响供应商评分", "是"], ["是否回写规则", "是"], ["关联库存预警", "IA20260622001"], ["关联供应商异常", "SA20260622001"]],
+          riskJudgement: [["售后风险", "高"], ["供应商质量风险", "高"], ["临期风险", "高"], ["品牌风险", "中"]],
+          suggestedAction: [["建议动作", "分析后回写供应商评分与补货规则"]],
+          adjustments: [],
+          availableActions: ["view", "confirm"]
+        }
+      ]
+    };
+
+    const sourceTables = [
+      { name: "销售历史表 sales_daily", columns: ["日期", "SKU", "仓/门店", "销量", "是否促销"], rows: [["2026-06-19", "SKU001", "福州 A 前置仓", "102", "否"], ["2026-06-20", "SKU003", "福州 B 前置仓", "86", "否"], ["2026-06-20", "SKU006", "上海盒马 XX 门店", "24", "是"], ["2026-06-21", "SKU010", "上海盒马 XX 门店", "41", "否"]] },
+      { name: "库存快照 inventory_snapshot", columns: ["快照时间", "SKU", "仓/门店", "当前库存", "临期库存"], rows: [["06:00", "SKU002", "福州 A 前置仓", "36", "12"], ["06:00", "SKU004", "广州 C 前置仓", "62", "0"], ["06:00", "SKU008", "广州 C 前置仓", "18", "0"], ["06:00", "SKU012", "广州 C 前置仓", "22", "3"]] },
+      { name: "在途库存 in_transit_inventory", columns: ["单号", "SKU", "发运地", "到达地", "在途数量"], rows: [["IT24062101", "SKU001", "福州蛋品中心", "福州 A 前置仓", "20"], ["IT24062109", "SKU004", "广州乳品仓", "广州 C 前置仓", "12"], ["IT24062112", "SKU006", "上海水产仓", "上海盒马 XX 门店", "5"]] },
+      { name: "供应商表现 supplier_performance", columns: ["供应商", "准时率", "质检合格率", "近7日退货率", "评级"], rows: [["福州闽鲜农场", "96.2%", "98.4%", "1.2%", "A"], ["岭南优选乳业", "94.8%", "97.1%", "0.8%", "A"], ["海润冷链水产", "91.5%", "95.3%", "2.4%", "B"], ["盒马熟食中央厨房", "97.9%", "99.1%", "0.4%", "A"]] }
+    ];
+
+    const riskRules = [
+      "预测置信度低于 70%，必须人工确认",
+      "临期库存占比超过 30%，禁止继续补货",
+      "供应商近 7 日质检合格率低于 90%，不得作为主供应商",
+      "当前采购价高于 7 日均价 15%，触发价格风险",
+      "补货后库存不得超过仓容上限 90%"
+    ];
+
+    const feedbackLoop = [
+      { title: "实际销量", value: "昨日 8,940" },
+      { title: "预测偏差", value: "8.6%" },
+      { title: "人工调整", value: "21.5%" },
+      { title: "规则修正", value: "6 条" },
+      { title: "下次优化", value: "已生效" }
+    ];
+
+    let executionRecords = [
+      { time: "2026-06-22 08:12", operator: "系统", action: "生成建议", target: "批量单据", before: "-", after: "生成预测、采购、补货、预警、异常单据", status: "完成" }
+    ];
+
+    const filterState = { date: "2026-06-22", city: "all", location: "all", category: "all", cycle: "明日", status: "all" };
+    let currentModule = "forecast";
+    let currentTab = modules[currentModule].tabs[0].key;
+    let selectedDocumentId = mockData[currentTab][0].id;
+    let editingDocumentId = null;
+
+    const todayDateEl = document.getElementById("todayDate");
+    const metricsRowEl = document.getElementById("metricsRow");
+    const moduleGridEl = document.getElementById("moduleGrid");
+    const stepsRowEl = document.getElementById("stepsRow");
+    const workbenchTitleEl = document.getElementById("workbenchTitle");
+    const workbenchSummaryEl = document.getElementById("workbenchSummary");
+    const documentTabsEl = document.getElementById("documentTabs");
+    const tabMetaEl = document.getElementById("tabMeta");
+    const currentModuleBadgeEl = document.getElementById("currentModuleBadge");
+    const currentTabBadgeEl = document.getElementById("currentTabBadge");
+    const documentTableBodyEl = document.getElementById("documentTableBody");
+    const bottomSourcesEl = document.getElementById("bottom-sources");
+    const bottomRecordsEl = document.getElementById("bottom-records");
+    const bottomRulesEl = document.getElementById("bottom-rules");
+    const feedbackLoopEl = document.getElementById("feedbackLoop");
+    const toastWrapEl = document.getElementById("toastWrap");
+    const adjustModalMaskEl = document.getElementById("adjustModalMask");
+    const adjustDocLabelEl = document.getElementById("adjustDocLabel");
+    const adjustQtyEl = document.getElementById("adjustQty");
+    const adjustRemarkEl = document.getElementById("adjustRemark");
+    const detailDrawerMaskEl = document.getElementById("detailDrawerMask");
+    const drawerTitleEl = document.getElementById("drawerTitle");
+    const drawerHintEl = document.getElementById("drawerHint");
+    const drawerBodyEl = document.getElementById("drawerBody");
+
+    const filterDateEl = document.getElementById("filterDate");
+    const filterCityEl = document.getElementById("filterCity");
+    const filterLocationEl = document.getElementById("filterLocation");
+    const filterCategoryEl = document.getElementById("filterCategory");
+    const filterCycleEl = document.getElementById("filterCycle");
+    const filterStatusEl = document.getElementById("filterStatus");
+    const generateBtnEl = document.getElementById("generateBtn");
+    const submitExecutionBtnEl = document.getElementById("submitExecutionBtn");
+    const resetFilterBtnEl = document.getElementById("resetFilterBtn");
+    const adjustCancelEl = document.getElementById("adjustCancel");
+    const adjustSaveEl = document.getElementById("adjustSave");
+    const drawerCloseEl = document.getElementById("drawerClose");
+    const sideMenuEl = document.getElementById("sideMenu");
+
+    function formatDate(dateString) {
+      const date = new Date(dateString + "T00:00:00");
+      const weeks = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${weeks[date.getDay()]}`;
+    }
+
+    function nowTimestamp() {
+      const now = new Date();
+      const pad = value => String(value).padStart(2, "0");
+      return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    }
+
+    function createToast(message) {
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.textContent = message;
+      toastWrapEl.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = "0"; toast.style.transform = "translateY(-6px)"; }, 2200);
+      setTimeout(() => toast.remove(), 2600);
+    }
+
+    function getStatusClass(status) {
+      if (["待确认", "待提交", "待处理", "待分析", "待供应商确认"].includes(status)) return "status-pending";
+      if (["已调整"].includes(status)) return "status-adjusted";
+      if (["已确认", "已替换", "已执行", "已通过", "主供"].includes(status)) return "status-confirmed";
+      if (["处理中", "审批中", "配送中"].includes(status)) return "status-processing";
+      return "status-closed";
+    }
+
+    function getRiskClass(level) {
+      if (level === "高") return "risk-high";
+      if (level === "中") return "risk-medium";
+      return "risk-low";
+    }
+
+    function getAllDocuments() {
+      return Object.values(mockData).flat();
+    }
+
+    function getModuleStats(moduleKey) {
+      const docs = getAllDocuments().filter(item => item.module === moduleKey);
+      const newCount = docs.length;
+      const pendingCount = docs.filter(item => ["待确认", "待提交", "待处理", "待分析", "待供应商确认", "审批中", "处理中"].includes(item.status)).length;
+      const abnormalCount = docs.filter(item => item.riskLevel === "高").length;
+      const latestTime = docs.map(item => item.createdAt).sort().reverse()[0] || "-";
+      return { newCount, pendingCount, abnormalCount, latestTime };
+    }
+
+    function getCurrentTabData() {
+      let rows = [...mockData[currentTab]];
+      rows = rows.filter(row => {
+        const matchCity = filterState.city === "all" || row.city === filterState.city;
+        const matchLocation = filterState.location === "all" || row.location === filterState.location || !row.location;
+        const matchCategory = filterState.category === "all" || row.category === filterState.category || row.category === "综合" || !row.category;
+        const matchStatus = filterState.status === "all" || row.status === filterState.status;
+        return matchCity && matchLocation && matchCategory && matchStatus;
+      });
+      return rows;
+    }
+
+    function findDocumentById(id) {
+      return getAllDocuments().find(item => item.id === id);
+    }
+
+    function renderMetrics() {
+      metricsRowEl.innerHTML = metrics.map(item => `
+        <div class="metric-card">
+          <div class="metric-label">${item.label}</div>
+          <div class="metric-value">${item.value}</div>
+          <div class="metric-trend">
+            <span class="${item.trendClass}">${item.trend}</span>
+            <span>${item.note}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderModules() {
+      moduleGridEl.innerHTML = Object.entries(modules).map(([key, module]) => {
+        const stats = getModuleStats(key);
+        return `
+          <div class="module-card ${key === currentModule ? "active" : ""}" data-module-card="${key}">
+            <div class="module-title">${module.name}</div>
+            <div class="module-items">
+              <div class="module-item"><span>今日新增单据数</span><strong>${stats.newCount}</strong></div>
+              <div class="module-item"><span>待处理单据数</span><strong>${stats.pendingCount}</strong></div>
+              <div class="module-item"><span>异常单据数</span><strong>${stats.abnormalCount}</strong></div>
+              <div class="module-item"><span>最近更新时间</span><strong>${stats.latestTime.slice(11)}</strong></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderSteps() {
+      stepsRowEl.innerHTML = steps.map((step, index) => `
+        <div class="step ${step.active ? "active" : ""}">
+          <div class="step-index">${index + 1}</div>
+          <div class="step-title">${step.title}</div>
+          <div class="step-note">${step.note}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderDocumentTabs() {
+      const module = modules[currentModule];
+      documentTabsEl.innerHTML = module.tabs.map(tab => `
+        <button class="tab-btn ${tab.key === currentTab ? "active" : ""}" data-doc-tab="${tab.key}">${tab.label}</button>
+      `).join("");
+    }
+
+    function renderWorkbenchMeta() {
+      const rows = getCurrentTabData();
+      const pending = rows.filter(item => ["待确认", "待提交", "待处理", "待分析", "待供应商确认"].includes(item.status)).length;
+      const highRisk = rows.filter(item => item.riskLevel === "高").length;
+      workbenchTitleEl.textContent = `${modules[currentModule].name} · 业务单据`;
+      workbenchSummaryEl.textContent = `当前单据类型 ${modules[currentModule].tabs.find(tab => tab.key === currentTab).label}，共 ${rows.length} 条，待处理 ${pending} 条，高风险 ${highRisk} 条`;
+      tabMetaEl.innerHTML = [
+        `当前单据 ${rows.length} 条`,
+        `待处理 ${pending} 条`,
+        `高风险 ${highRisk} 条`,
+        `可转单 ${rows.filter(item => item.availableActions.includes("transfer")).length} 条`
+      ].map(item => `<span class="meta-badge">${item}</span>`).join("");
+      currentModuleBadgeEl.textContent = `模块：${modules[currentModule].name}`;
+      currentTabBadgeEl.textContent = `单据：${modules[currentModule].tabs.find(tab => tab.key === currentTab).label}`;
+    }
+
+    function renderDocumentTable() {
+      const rows = getCurrentTabData();
+      if (!rows.length) {
+        documentTableBodyEl.innerHTML = `<tr><td colspan="7" style="height:120px;text-align:center;color:#6b7280;">当前筛选条件下暂无单据数据</td></tr>`;
+        return;
+      }
+
+      if (!rows.some(item => item.id === selectedDocumentId)) {
+        selectedDocumentId = rows[0].id;
+      }
+
+      documentTableBodyEl.innerHTML = rows.map(row => `
+        <tr class="${row.id === selectedDocumentId ? "selected" : ""}" data-doc-id="${row.id}">
+          <td>
+            <div class="doc-cell">
+              <span class="doc-no">${row.id}</span>
+              <span class="doc-sub">${row.objectSub || "-"}</span>
+            </div>
+          </td>
+          <td>${row.sourceId || "-"}</td>
+          <td>${row.object}</td>
+          <td>${row.valueSummary}</td>
+          <td><span class="tag ${getStatusClass(row.status)}">${row.status}</span></td>
+          <td>${row.createdAt}</td>
+          <td>
+            <div class="mini-btns">
+              <button class="mini-btn" data-action="view" data-doc-id="${row.id}">查看</button>
+              <button class="mini-btn" data-action="confirm" data-doc-id="${row.id}" ${!row.availableActions.includes("confirm") ? "disabled" : ""}>确认</button>
+              <button class="mini-btn" data-action="adjust" data-doc-id="${row.id}" ${!row.availableActions.includes("adjust") ? "disabled" : ""}>调整</button>
+              <button class="mini-btn" data-action="transfer" data-doc-id="${row.id}" ${!row.availableActions.includes("transfer") ? "disabled" : ""}>转单</button>
+              <button class="mini-btn" data-action="close" data-doc-id="${row.id}" ${!row.availableActions.includes("close") ? "disabled" : ""}>关闭</button>
+            </div>
+          </td>
+        </tr>
+      `).join("");
+    }
+
+    function renderSources() {
+      bottomSourcesEl.innerHTML = sourceTables.map(table => `
+        <div class="source-block">
+          <div class="inline-table-title">${table.name}</div>
+          <table>
+            <thead><tr>${table.columns.map(col => `<th>${col}</th>`).join("")}</tr></thead>
+            <tbody>${table.rows.map(row => `<tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody>
+          </table>
+        </div>
+      `).join("");
+    }
+
+    function renderExecutionRecords() {
+      bottomRecordsEl.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th style="width:146px;">时间</th>
+              <th style="width:120px;">操作人</th>
+              <th style="width:120px;">动作</th>
+              <th style="width:140px;">对象</th>
+              <th>调整前</th>
+              <th>调整后</th>
+              <th style="width:90px;">状态</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${executionRecords.map(item => `
+              <tr>
+                <td>${item.time}</td>
+                <td>${item.operator}</td>
+                <td>${item.action}</td>
+                <td>${item.target}</td>
+                <td>${item.before}</td>
+                <td>${item.after}</td>
+                <td>${item.status}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderRules() {
+      bottomRulesEl.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th style="width:80px;">规则</th>
+              <th>内容</th>
+              <th style="width:120px;">执行方式</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${riskRules.map((item, index) => `
+              <tr>
+                <td>RULE-${String(index + 1).padStart(2, "0")}</td>
+                <td>${item}</td>
+                <td>${index < 2 ? "强校验" : "预警提示"}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderFeedbackLoop() {
+      feedbackLoopEl.innerHTML = feedbackLoop.map((item, index) => `
+        <div class="loop-step">
+          <div class="loop-step-title">${index + 1}. ${item.title}</div>
+          <div class="loop-step-value">${item.value}</div>
+        </div>
+        ${index < feedbackLoop.length - 1 ? '<div class="flow-arrow">→</div>' : ""}
+      `).join("");
+    }
+
+    function openDetailDrawer(docId) {
+      const doc = findDocumentById(docId);
+      if (!doc) return;
+      const basicInfo = doc.basicInfo || [];
+      const agentResult = doc.agentResult || [];
+      const riskJudgement = doc.riskJudgement || [];
+      const suggestedAction = doc.suggestedAction || [];
+      const adjustments = doc.adjustments || [];
+      const links = doc.links || [];
+      selectedDocumentId = docId;
+      drawerTitleEl.textContent = `${modules[doc.module].name} · ${modules[doc.module].tabs.find(tab => tab.key === doc.tabKey).label}`;
+      drawerHintEl.textContent = `${doc.id} · ${doc.status} · ${doc.createdAt}`;
+      drawerBodyEl.innerHTML = `
+        <section class="detail-section">
+          <h4>单据头信息</h4>
+          <div class="detail-grid">
+            <div class="detail-item"><div class="label">单据编号</div><div class="value">${doc.id}</div></div>
+            <div class="detail-item"><div class="label">状态标签</div><div class="value"><span class="tag ${getStatusClass(doc.status)}">${doc.status}</span></div></div>
+            <div class="detail-item"><div class="label">创建时间</div><div class="value">${doc.createdAt}</div></div>
+            <div class="detail-item"><div class="label">来源单据</div><div class="value">${doc.sourceId || "-"}</div></div>
+            <div class="detail-item"><div class="label">业务对象</div><div class="value">${doc.object}</div></div>
+            <div class="detail-item"><div class="label">关联单据数</div><div class="value">${links.length}</div></div>
+          </div>
+        </section>
+        <section class="detail-section">
+          <h4>基础信息</h4>
+          <div class="detail-grid">${(basicInfo.length ? basicInfo : [["暂无基础信息", "-"]]).map(item => `<div class="detail-item"><div class="label">${item[0]}</div><div class="value">${item[1]}</div></div>`).join("")}</div>
+        </section>
+        <section class="detail-section">
+          <h4>Agent 计算结果</h4>
+          <div class="detail-grid">${(agentResult.length ? agentResult : [["暂无结果", "-"]]).map(item => `<div class="detail-item"><div class="label">${item[0]}</div><div class="value">${item[1]}</div></div>`).join("")}</div>
+        </section>
+        <section class="detail-section">
+          <h4>风险判断</h4>
+          <div class="detail-grid">${(riskJudgement.length ? riskJudgement : [["暂无风险判断", "-"]]).map(item => `<div class="detail-item"><div class="label">${item[0]}</div><div class="value">${item[1]}</div></div>`).join("")}</div>
+        </section>
+        <section class="detail-section">
+          <h4>建议动作</h4>
+          <div class="detail-grid">${(suggestedAction.length ? suggestedAction : [["暂无建议动作", "-"]]).map(item => `<div class="detail-item"><div class="label">${item[0]}</div><div class="value">${item[1]}</div></div>`).join("")}</div>
+        </section>
+        <section class="detail-section">
+          <h4>人工调整记录</h4>
+          <div class="detail-grid">${(adjustments.length ? adjustments : [["暂无调整", "当前无人工调整记录"]]).map(item => `<div class="detail-item"><div class="label">${item[0]}</div><div class="value">${item[1]}${item[2] ? ` · ${item[2]}` : ""}</div></div>`).join("")}</div>
+        </section>
+        <section class="detail-section">
+          <h4>关联单据</h4>
+          <div class="link-chain">${(links.length ? links : ["无关联单据"]).map(link => findDocumentById(link) ? `<span class="link-chip" data-link-doc="${link}">${link}</span>` : `<span class="link-chip">${link}</span>`).join("")}</div>
+        </section>
+      `;
+      detailDrawerMaskEl.classList.add("show");
+      renderDocumentTable();
+    }
+
+    function closeDrawer() {
+      detailDrawerMaskEl.classList.remove("show");
+    }
+
+    function addRecord(action, target, before, after, status) {
+      executionRecords.unshift({ time: nowTimestamp(), operator: "采购计划员 江鑫", action, target, before, after, status });
+      renderExecutionRecords();
+    }
+
+    function openAdjustModal(docId) {
+      const doc = findDocumentById(docId);
+      if (!doc) return;
+      editingDocumentId = docId;
+      adjustDocLabelEl.textContent = `${doc.id} · 调整数量 / 金额`;
+      const rawValue = (doc.valueSummary.match(/\d+/g) || ["0"])[0];
+      adjustQtyEl.value = Number(rawValue);
+      adjustRemarkEl.value = "人工调整";
+      adjustModalMaskEl.classList.add("show");
+    }
+
+    function closeAdjustModal() {
+      editingDocumentId = null;
+      adjustModalMaskEl.classList.remove("show");
+    }
+
+    function confirmDocument(docId) {
+      const doc = findDocumentById(docId);
+      if (!doc || doc.status === "已确认") return;
+      const before = doc.status;
+      doc.status = "已确认";
+      addRecord("确认单据", doc.id, before, doc.status, "已确认");
+      createToast("已确认该业务单据");
+      renderAll();
+    }
+
+    function adjustDocument() {
+      const doc = findDocumentById(editingDocumentId);
+      if (!doc) return;
+      const beforeSummary = doc.valueSummary;
+      const qty = Number(adjustQtyEl.value) || 0;
+      const remark = adjustRemarkEl.value.trim() || "人工调整";
+      doc.valueSummary = doc.valueSummary.includes("¥") ? `调整金额 ¥${qty.toLocaleString("zh-CN")}` : `${doc.valueSummary.split(" ")[0]} ${qty}`;
+      doc.status = "已调整";
+      doc.adjustments.unshift([nowTimestamp(), "采购计划员 江鑫", `${remark}：${beforeSummary} → ${doc.valueSummary}`]);
+      addRecord("调整单据", doc.id, beforeSummary, doc.valueSummary, "已调整");
+      closeAdjustModal();
+      createToast("已更新该单据的人工调整结果");
+      renderAll();
+    }
+
+    function closeDocument(docId) {
+      const doc = findDocumentById(docId);
+      if (!doc) return;
+      const before = doc.status;
+      doc.status = "已关闭";
+      addRecord("关闭单据", doc.id, before, doc.status, "已关闭");
+      createToast("该单据已关闭");
+      renderAll();
+    }
+
+    function transferDocument(docId) {
+      const doc = findDocumentById(docId);
+      if (!doc) return;
+
+      if (doc.tabKey === "purchasePlanOrder") {
+        const newId = `PR20260622${String(mockData.purchaseRequestOrder.length + 3).padStart(3, "0")}`;
+        mockData.purchaseRequestOrder.unshift({
+          id: newId,
+          sourceId: doc.id,
+          module: "purchase",
+          tabKey: "purchaseRequestOrder",
+          object: doc.object.includes("蔬菜") ? "鸡蛋 30枚" : "采购申请",
+          objectSub: doc.city || "采购申请",
+          valueSummary: `申请金额 ¥${Math.round((Math.random() * 8000) + 2000).toLocaleString("zh-CN")}`,
+          status: "待确认",
+          createdAt: nowTimestamp(),
+          riskLevel: doc.riskLevel,
+          links: [doc.id],
+          basicInfo: [["申请部门", "采购计划部"], ["申请人", "江鑫"], ["来源计划单", doc.id], ["审批状态", "待提交"]],
+          agentResult: [["推荐供应商", "系统优选"], ["预计采购金额", "按计划拆分"], ["期望到货", "T+1"], ["来源单据", doc.id]],
+          riskJudgement: [["价格风险", doc.riskLevel], ["审批风险", "低"], ["质量风险", "中"], ["履约影响", "中"]],
+          suggestedAction: [["建议动作", "提交后生成采购订单"]],
+          adjustments: [],
+          availableActions: ["view", "confirm", "transfer"]
+        });
+        doc.status = "已关闭";
+        if (!doc.links.includes(newId)) doc.links.push(newId);
+        addRecord("转采购申请", doc.id, "采购计划单", newId, "完成");
+        createToast("已根据采购计划单生成采购申请单");
+      } else if (doc.tabKey === "purchaseRequestOrder") {
+        const newId = `PO20260622${String(mockData.purchaseOrder.length + 2).padStart(3, "0")}`;
+        mockData.purchaseOrder.unshift({
+          id: newId,
+          sourceId: doc.id,
+          module: "purchase",
+          tabKey: "purchaseOrder",
+          object: "自动生成采购订单",
+          objectSub: doc.object,
+          valueSummary: doc.valueSummary.replace("申请", "采购"),
+          status: "待确认",
+          createdAt: nowTimestamp(),
+          riskLevel: doc.riskLevel,
+          links: [doc.id],
+          basicInfo: [["来源申请单", doc.id], ["供应商", "系统优选"], ["订单状态", "待供应商确认"], ["期望到货", "T+1"]],
+          agentResult: [["采购金额", doc.valueSummary.replace("申请金额 ", "")], ["订单创建", "系统自动"], ["来源单据", doc.id], ["审批状态", "已通过"]],
+          riskJudgement: [["价格风险", doc.riskLevel], ["物流风险", "低"], ["质量风险", "中"], ["履约影响", "中"]],
+          suggestedAction: [["建议动作", "等待供应商接单"]],
+          adjustments: [],
+          availableActions: ["view", "close"]
+        });
+        doc.status = "已关闭";
+        if (!doc.links.includes(newId)) doc.links.push(newId);
+        addRecord("转采购订单", doc.id, "采购申请单", newId, "完成");
+        createToast("已根据采购申请单生成采购订单");
+      } else if (doc.tabKey === "replenishmentSuggestionOrder") {
+        const newId = `RT20260622${String(mockData.replenishmentTaskOrder.length + 2).padStart(3, "0")}`;
+        mockData.replenishmentTaskOrder.unshift({
+          id: newId,
+          sourceId: doc.id,
+          module: "replenishment",
+          tabKey: "replenishmentTaskOrder",
+          object: "中心仓 → 前置仓",
+          objectSub: doc.object,
+          valueSummary: doc.valueSummary.replace("建议补货", "补货量"),
+          status: "处理中",
+          createdAt: nowTimestamp(),
+          riskLevel: doc.riskLevel,
+          links: [doc.id],
+          basicInfo: [["来源建议单", doc.id], ["执行状态", "待分拨"], ["计划出库", "今日 10:00"], ["计划到货", "今日 12:00"]],
+          agentResult: [["补货量", doc.valueSummary.replace("建议补货 ", "")], ["执行路径", "中心仓 → 前置仓"], ["来源单据", doc.id], ["状态", "待执行"]],
+          riskJudgement: [["配送风险", "中"], ["仓容风险", "低"], ["履约影响", "正向"], ["临期冲突", "无"]],
+          suggestedAction: [["建议动作", "跟踪配送回写"]],
+          adjustments: [],
+          availableActions: ["view", "close"]
+        });
+        doc.status = "已关闭";
+        if (!doc.links.includes(newId)) doc.links.push(newId);
+        addRecord("转补货任务", doc.id, "补货建议单", newId, "完成");
+        createToast("已根据补货建议单生成补货任务单");
+      } else if (doc.tabKey === "inventoryAlertOrder") {
+        if (doc.valueSummary.includes("临期")) {
+          const newId = `EX20260622${String(mockData.expiryHandlingOrder.length + 2).padStart(3, "0")}`;
+          mockData.expiryHandlingOrder.unshift({
+            id: newId,
+            sourceId: doc.id,
+            module: "inventory",
+            tabKey: "expiryHandlingOrder",
+            object: doc.object,
+            objectSub: doc.objectSub,
+            valueSummary: "临期处理待确认",
+            status: "待确认",
+            createdAt: nowTimestamp(),
+            riskLevel: "高",
+            links: [doc.id],
+            basicInfo: [["来源预警单", doc.id], ["建议处理", "折扣促销"], ["建议折扣", "8 折"], ["剩余保质期", "1 天"]],
+            agentResult: [["预计减少损耗", "¥860"], ["处理窗口", "今日"], ["来源单据", doc.id], ["处理方式", "促销"]],
+            riskJudgement: [["损耗风险", "高"], ["售后风险", "中"], ["调拨风险", "低"], ["执行风险", "中"]],
+            suggestedAction: [["建议动作", "确认后执行临期处理"]],
+            adjustments: [],
+            availableActions: ["view", "confirm", "close"]
+          });
+          if (!doc.links.includes(newId)) doc.links.push(newId);
+          addRecord("转临期处理", doc.id, "库存预警单", newId, "完成");
+          createToast("已根据临期预警生成临期处理单");
+        } else {
+          const newId = `RP20260622${String(mockData.replenishmentSuggestionOrder.length + 2).padStart(3, "0")}`;
+          mockData.replenishmentSuggestionOrder.unshift({
+            id: newId,
+            sourceId: doc.id,
+            module: "replenishment",
+            tabKey: "replenishmentSuggestionOrder",
+            object: doc.object,
+            objectSub: doc.objectSub,
+            valueSummary: "建议补货 96",
+            status: "待确认",
+            createdAt: nowTimestamp(),
+            riskLevel: "中",
+            links: [doc.id],
+            basicInfo: [["来源预警单", doc.id], ["当前库存", "16"], ["安全库存", "20"], ["建议补货量", "96"]],
+            agentResult: [["建议补货时间", "今日 11:30"], ["来源单据", doc.id], ["补货策略", "高峰前补足"], ["优先级", "中"]],
+            riskJudgement: [["缺货风险", "中"], ["仓容风险", "低"], ["履约风险", "中"], ["临期风险", "低"]],
+            suggestedAction: [["建议动作", "确认后转补货任务"]],
+            adjustments: [],
+            availableActions: ["view", "confirm", "transfer"]
+          });
+          if (!doc.links.includes(newId)) doc.links.push(newId);
+          addRecord("转补货建议", doc.id, "库存预警单", newId, "完成");
+          createToast("已根据缺货预警生成补货建议单");
+        }
+        doc.status = "已关闭";
+      }
+
+      renderAll();
+    }
+
+    function submitExecution() {
+      const executable = getAllDocuments().filter(item => item.status === "已确认" || item.status === "已调整");
+      addRecord("提交执行", "批量单据", "-", `${executable.length} 条单据进入执行审批`, "待审批");
+      createToast(`已提交 ${executable.length} 条业务单据，等待主管审批`);
+      setBottomTab("records");
+    }
+
+    function regenerateSuggestions() {
+      const accuracy = ["87.1%", "85.8%", "86.9%", "87.4%"][Math.floor(Math.random() * 4)];
+      const amount = ["¥132,480", "¥126,920", "¥130,360", "¥134,210"][Math.floor(Math.random() * 4)];
+      metrics.find(item => item.key === "accuracy").value = accuracy;
+      metrics.find(item => item.key === "purchaseAmount").value = amount;
+
+      const newForecastId = `FP20260622${String(mockData.forecastOrder.length + 1).padStart(3, "0")}`;
+      mockData.forecastOrder.unshift({
+        id: newForecastId,
+        sourceId: "-",
+        module: "forecast",
+        tabKey: "forecastOrder",
+        object: "深圳 D 前置仓",
+        objectSub: "明日 / 18 SKU",
+        valueSummary: "预测销量 3,240",
+        status: "待确认",
+        createdAt: nowTimestamp(),
+        city: "深圳",
+        location: "深圳 D 前置仓",
+        category: "综合",
+        forecastDate: filterState.date,
+        forecastCycle: filterState.cycle,
+        skuCount: 18,
+        forecastSales: 3240,
+        confidence: accuracy,
+        generateMode: "Agent 自动生成",
+        riskLevel: "中",
+        links: [],
+        basicInfo: [["预测日期", filterState.date], ["预测周期", filterState.cycle], ["城市", "深圳"], ["SKU 数量", "18"]],
+        agentResult: [["预测总销量", "3,240"], ["平均置信度", accuracy], ["缺货截断修正", "已启用"], ["促销天气影响", "已识别"]],
+        riskJudgement: [["风险 SKU", "3"], ["价格风险", "1"], ["供应商风险", "1"], ["临期风险", "1"]],
+        suggestedAction: [["建议动作", "自动生成采购计划单与补货建议单"]],
+        adjustments: [],
+        availableActions: ["view", "confirm"]
+      });
+
+      const newPlanId = `PP20260622${String(mockData.purchasePlanOrder.length + 1).padStart(3, "0")}`;
+      const newRpId = `RP20260622${String(mockData.replenishmentSuggestionOrder.length + 1).padStart(3, "0")}`;
+      const newIaId = `IA20260622${String(mockData.inventoryAlertOrder.length + 1).padStart(3, "0")}`;
+      const newSaId = `SA20260622${String(mockData.supplierAbnormalOrder.length + 1).padStart(3, "0")}`;
+      const newPaId = `PA20260622${String(mockData.priceAbnormalOrder.length + 1).padStart(3, "0")}`;
+
+      mockData.purchasePlanOrder.unshift({
+        id: newPlanId, sourceId: newForecastId, module: "purchase", tabKey: "purchasePlanOrder", object: "水果 / 肉禽蛋", objectSub: "深圳", valueSummary: "采购金额 ¥21,640", status: "待确认", createdAt: nowTimestamp(), riskLevel: "中", links: [newForecastId, newPaId], basicInfo: [["计划日期", filterState.date], ["城市", "深圳"], ["品类", "水果 / 肉禽蛋"], ["SKU 数量", "10"]], agentResult: [["建议采购总量", "540"], ["预计采购金额", "¥21,640"], ["推荐供应商数", "3"], ["风险 SKU", "2"]], riskJudgement: [["价格风险", "蓝莓报价波动"], ["质量风险", "低"], ["仓容影响", "低"], ["临期冲突", "无"]], suggestedAction: [["建议动作", "确认后转采购申请单"]], adjustments: [], availableActions: ["view", "confirm", "adjust", "transfer"]
+      });
+      mockData.replenishmentSuggestionOrder.unshift({
+        id: newRpId, sourceId: newForecastId, module: "replenishment", tabKey: "replenishmentSuggestionOrder", object: "蓝莓", objectSub: "深圳 D 前置仓", valueSummary: "建议补货 96", status: "待确认", createdAt: nowTimestamp(), riskLevel: "中", links: [newForecastId, newPlanId], basicInfo: [["当前库存", "14"], ["在途库存", "8"], ["预测销量", "31"], ["安全库存", "14"]], agentResult: [["建议补货量", "96"], ["建议补货时间", "今日 15:00"], ["来源预测单", newForecastId], ["来源采购计划", newPlanId]], riskJudgement: [["风险等级", "中"], ["风险类型", "缺货风险"], ["仓容影响", "低"], ["临期冲突", "无"]], suggestedAction: [["建议动作", "确认后转补货任务单"]], adjustments: [], availableActions: ["view", "confirm", "adjust", "transfer"]
+      });
+      mockData.inventoryAlertOrder.unshift({
+        id: newIaId, sourceId: newRpId, module: "inventory", tabKey: "inventoryAlertOrder", object: "蓝莓", objectSub: "深圳 D 前置仓", valueSummary: "缺货预警 / 中", status: "待确认", createdAt: nowTimestamp(), riskLevel: "中", links: [newRpId], basicInfo: [["当前库存", "14"], ["安全库存", "14"], ["预测销量", "31"], ["预计可售天数", "0.7 天"]], agentResult: [["预警类型", "缺货预警"], ["处理建议", "优先补货"], ["来源单据", newRpId], ["风险级别", "中"]], riskJudgement: [["缺货风险", "中"], ["仓容风险", "低"], ["售后风险", "低"], ["报损风险", "低"]], suggestedAction: [["建议动作", "联动补货建议单处理"]], adjustments: [], availableActions: ["view", "transfer"]
+      });
+      mockData.supplierAbnormalOrder.unshift({
+        id: newSaId, sourceId: newPlanId, module: "supplier", tabKey: "supplierAbnormalOrder", object: "深圳水果供应", objectSub: "蓝莓", valueSummary: "影响 1 个前置仓", status: "待确认", createdAt: nowTimestamp(), riskLevel: "中", links: [newPlanId, newPaId], basicInfo: [["异常类型", "报价波动"], ["SKU", "蓝莓"], ["影响范围", "1 个前置仓"], ["处理建议", "价格确认"]], agentResult: [["价格波动", "+8.2%"], ["关联采购计划", newPlanId], ["关联价格异常", newPaId], ["状态", "待确认"]], riskJudgement: [["供应风险", "中"], ["质量风险", "低"], ["价格风险", "中"], ["履约影响", "中"]], suggestedAction: [["建议动作", "确认后选择替代报价"]], adjustments: [], availableActions: ["view", "confirm"]
+      });
+      mockData.priceAbnormalOrder.unshift({
+        id: newPaId, sourceId: newSaId, module: "supplier", tabKey: "priceAbnormalOrder", object: "蓝莓", objectSub: "深圳水果供应", valueSummary: "涨幅 18.2%", status: "待确认", createdAt: nowTimestamp(), riskLevel: "高", links: [newPlanId, newSaId], basicInfo: [["当前报价", "¥22.8"], ["7 日均价", "¥19.3"], ["涨幅", "18.2%"], ["是否超阈值", "是"]], agentResult: [["处理建议", "需人工确认价格风险"], ["关联采购计划", newPlanId], ["供应商", "深圳水果供应"], ["预警级别", "高"]], riskJudgement: [["价格风险", "高"], ["替代供应商", "1 家"], ["质量风险", "低"], ["履约影响", "中"]], suggestedAction: [["建议动作", "确认后选择是否锁价采购"]], adjustments: [], availableActions: ["view", "confirm", "close"]
+      });
+
+      addRecord("生成建议", "批量单据", "-", "新增预测、采购、补货、预警、异常单据", "完成");
+      createToast("Agent 已生成需求预测单、采购计划单、补货建议单及风险预警单");
+      renderAll();
+    }
+
+    function setModule(moduleKey) {
+      currentModule = moduleKey;
+      currentTab = modules[moduleKey].tabs[0].key;
+      selectedDocumentId = mockData[currentTab][0]?.id || "";
+      renderAll();
+    }
+
+    function setBottomTab(tabKey) {
+      document.querySelectorAll("[data-bottom-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.bottomTab === tabKey));
+      document.querySelectorAll(".tab-panel").forEach(panel => panel.classList.remove("active"));
+      document.getElementById(`bottom-${tabKey}`).classList.add("active");
+    }
+
+    function renderAll() {
+      renderMetrics();
+      renderModules();
+      renderSteps();
+      renderDocumentTabs();
+      renderWorkbenchMeta();
+      renderDocumentTable();
+      renderExecutionRecords();
+      renderRules();
+      renderSources();
+      renderFeedbackLoop();
+      document.querySelectorAll(".menu-item").forEach(item => item.classList.toggle("active", item.dataset.module === currentModule));
+    }
+
+    function bindEvents() {
+      filterDateEl.addEventListener("change", event => { filterState.date = event.target.value; });
+      filterCityEl.addEventListener("change", event => { filterState.city = event.target.value; renderDocumentTable(); renderWorkbenchMeta(); });
+      filterLocationEl.addEventListener("change", event => { filterState.location = event.target.value; renderDocumentTable(); renderWorkbenchMeta(); });
+      filterCategoryEl.addEventListener("change", event => { filterState.category = event.target.value; renderDocumentTable(); renderWorkbenchMeta(); });
+      filterCycleEl.addEventListener("change", event => { filterState.cycle = event.target.value; });
+      filterStatusEl.addEventListener("change", event => { filterState.status = event.target.value; renderDocumentTable(); renderWorkbenchMeta(); });
+
+      generateBtnEl.addEventListener("click", regenerateSuggestions);
+      submitExecutionBtnEl.addEventListener("click", submitExecution);
+      resetFilterBtnEl.addEventListener("click", () => {
+        filterState.date = "2026-06-22";
+        filterState.city = "all";
+        filterState.location = "all";
+        filterState.category = "all";
+        filterState.cycle = "明日";
+        filterState.status = "all";
+        filterDateEl.value = filterState.date;
+        filterCityEl.value = filterState.city;
+        filterLocationEl.value = filterState.location;
+        filterCategoryEl.value = filterState.category;
+        filterCycleEl.value = filterState.cycle;
+        filterStatusEl.value = filterState.status;
+        renderDocumentTable();
+        renderWorkbenchMeta();
+      });
+
+      sideMenuEl.addEventListener("click", event => {
+        const item = event.target.closest("[data-module]");
+        if (!item) return;
+        setModule(item.dataset.module);
+      });
+
+      moduleGridEl.addEventListener("click", event => {
+        const card = event.target.closest("[data-module-card]");
+        if (!card) return;
+        setModule(card.dataset.moduleCard);
+      });
+
+      documentTabsEl.addEventListener("click", event => {
+        const btn = event.target.closest("[data-doc-tab]");
+        if (!btn) return;
+        currentTab = btn.dataset.docTab;
+        selectedDocumentId = mockData[currentTab][0]?.id || "";
+        renderAll();
+      });
+
+      documentTableBodyEl.addEventListener("click", event => {
+        const actionBtn = event.target.closest("[data-action]");
+        if (actionBtn) {
+          const { action, docId } = actionBtn.dataset;
+          if (action === "view") openDetailDrawer(docId);
+          if (action === "confirm") confirmDocument(docId);
+          if (action === "adjust") openAdjustModal(docId);
+          if (action === "transfer") transferDocument(docId);
+          if (action === "close") closeDocument(docId);
+          return;
+        }
+
+        const row = event.target.closest("tr[data-doc-id]");
+        if (!row) return;
+        selectedDocumentId = row.dataset.docId;
+        renderDocumentTable();
+        openDetailDrawer(row.dataset.docId);
+      });
+
+      document.querySelectorAll("[data-bottom-tab]").forEach(btn => {
+        btn.addEventListener("click", () => setBottomTab(btn.dataset.bottomTab));
+      });
+
+      adjustCancelEl.addEventListener("click", closeAdjustModal);
+      adjustSaveEl.addEventListener("click", adjustDocument);
+      adjustModalMaskEl.addEventListener("click", event => { if (event.target === adjustModalMaskEl) closeAdjustModal(); });
+
+      drawerCloseEl.addEventListener("click", closeDrawer);
+      detailDrawerMaskEl.addEventListener("click", event => { if (event.target === detailDrawerMaskEl) closeDrawer(); });
+      drawerBodyEl.addEventListener("click", event => {
+        const chip = event.target.closest("[data-link-doc]");
+        if (!chip) return;
+        openDetailDrawer(chip.dataset.linkDoc);
+      });
+    }
+
+    function init() {
+      todayDateEl.textContent = `今日日期：${formatDate("2026-06-21")}`;
+      renderAll();
+      bindEvents();
+    }
+
+    init();
+  </script>
+</body>
+</html>
