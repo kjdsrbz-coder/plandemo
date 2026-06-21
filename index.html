@@ -231,49 +231,6 @@
       gap: 14px;
     }
 
-    .top-pinned-panels {
-      display: grid;
-      grid-template-columns: 1fr;
-      margin-bottom: 20px;
-      position: sticky;
-      top: 18px;
-      z-index: 5;
-    }
-
-    .top-pinned-panels .panel {
-      box-shadow: none;
-    }
-
-    .top-pinned-panels .module-grid {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      padding-top: 14px;
-    }
-
-    .top-pinned-panels .module-card {
-      min-height: 132px;
-    }
-
-    .collapse-btn {
-      height: 30px;
-      min-width: 64px;
-      padding: 0 12px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #fff;
-      color: #475569;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .collapse-btn:hover {
-      background: #f8fafc;
-    }
-
-    .panel-collapsed .collapsible-body {
-      display: none;
-    }
-
     .metric-card {
       padding: 16px 18px;
       background: var(--surface);
@@ -673,6 +630,26 @@
       animation: toast-in 0.2s ease forwards;
     }
 
+    .global-reset-btn {
+      position: fixed;
+      left: 18px;
+      bottom: 18px;
+      z-index: 45;
+      height: 40px;
+      padding: 0 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: #334155;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      font-weight: 600;
+    }
+
+    .global-reset-btn:hover {
+      background: #f8fafc;
+    }
+
     @keyframes toast-in {
       to { opacity: 1; transform: translateY(0); }
     }
@@ -705,21 +682,6 @@
 
     <main class="content">
       <div class="page">
-        <section class="top-pinned-panels">
-          <section class="panel" id="moduleWorkbenchPanel">
-            <div class="panel-head">
-              <div>
-                <div class="panel-title">业务单据工作台</div>
-                <div class="panel-subtitle">按功能模块查看 Agent 生成的单据、状态流转和执行单据</div>
-              </div>
-              <button class="collapse-btn" data-toggle-panel="moduleWorkbenchPanel">收起</button>
-            </div>
-            <div class="collapsible-body">
-              <div class="module-grid" id="moduleGrid"></div>
-            </div>
-          </section>
-        </section>
-
         <section class="panel">
           <div class="panel-head">
             <div>
@@ -889,6 +851,8 @@
       <div id="drawerBody" class="drawer-body"></div>
     </aside>
   </div>
+
+  <button id="globalResetBtn" class="global-reset-btn" type="button">重置演示</button>
 
   <div id="toastWrap" class="toast-wrap"></div>
 
@@ -1554,9 +1518,24 @@
     let selectedDocumentId = mockData[currentTab][0].id;
     let editingDocumentId = null;
 
+    function cloneData(data) {
+      return JSON.parse(JSON.stringify(data));
+    }
+
+    const initialMetricsSnapshot = cloneData(metrics);
+    const initialMockDataSnapshot = cloneData(mockData);
+    const initialExecutionRecordsSnapshot = cloneData(executionRecords);
+    const initialFilterStateSnapshot = cloneData(filterState);
+    const initialUiStateSnapshot = {
+      currentModule,
+      currentTab,
+      selectedDocumentId
+    };
+
+    let runtimeFlowDocIds = [];
+
     const todayDateEl = document.getElementById("todayDate");
     const metricsRowEl = document.getElementById("metricsRow");
-    const moduleGridEl = document.getElementById("moduleGrid");
     const workbenchTitleEl = document.getElementById("workbenchTitle");
     const workbenchSummaryEl = document.getElementById("workbenchSummary");
     const documentTabsEl = document.getElementById("documentTabs");
@@ -1587,15 +1566,11 @@
     const generateBtnEl = document.getElementById("generateBtn");
     const submitExecutionBtnEl = document.getElementById("submitExecutionBtn");
     const resetFilterBtnEl = document.getElementById("resetFilterBtn");
+    const globalResetBtnEl = document.getElementById("globalResetBtn");
     const adjustCancelEl = document.getElementById("adjustCancel");
     const adjustSaveEl = document.getElementById("adjustSave");
     const drawerCloseEl = document.getElementById("drawerClose");
     const sideMenuEl = document.getElementById("sideMenu");
-    const moduleWorkbenchPanelEl = document.getElementById("moduleWorkbenchPanel");
-
-    const panelCollapsedState = {
-      moduleWorkbenchPanel: false
-    };
 
     function formatDate(dateString) {
       const date = new Date(dateString + "T00:00:00");
@@ -1661,6 +1636,197 @@
       return getAllDocuments().find(item => item.id === id);
     }
 
+    function uniqueIds(ids) {
+      return [...new Set((ids || []).filter(id => id && id !== "-"))];
+    }
+
+    function markRuntimeFlow(ids) {
+      runtimeFlowDocIds = uniqueIds([...(runtimeFlowDocIds || []), ...(ids || [])]);
+    }
+
+    function getAncestorIds(doc) {
+      const result = [];
+      let currentId = doc?.sourceId;
+      while (currentId && currentId !== "-") {
+        result.push(currentId);
+        const currentDoc = findDocumentById(currentId);
+        currentId = currentDoc?.sourceId;
+      }
+      return uniqueIds(result);
+    }
+
+    function getDescendantIds(docId) {
+      const result = [];
+      const queue = [docId];
+      while (queue.length) {
+        const currentId = queue.shift();
+        const children = getAllDocuments().filter(item => item.sourceId === currentId);
+        children.forEach(child => {
+          if (!result.includes(child.id)) {
+            result.push(child.id);
+            queue.push(child.id);
+          }
+        });
+      }
+      return uniqueIds(result);
+    }
+
+    function getDocumentChains(doc) {
+      const upstreamIds = getAncestorIds(doc);
+      const explicitLinks = uniqueIds(doc.links || []);
+      const descendantIds = getDescendantIds(doc.id);
+      const downstreamIds = uniqueIds([
+        ...descendantIds,
+        ...explicitLinks.filter(id => {
+          const linked = findDocumentById(id);
+          return linked && (linked.sourceId === doc.id || descendantIds.includes(id));
+        })
+      ]);
+      const relatedIds = uniqueIds(explicitLinks.filter(id => !upstreamIds.includes(id) && !downstreamIds.includes(id)));
+      return { upstreamIds, downstreamIds, relatedIds };
+    }
+
+    function appendLink(docId, linkedId) {
+      const doc = findDocumentById(docId);
+      if (!doc) return;
+      doc.links = uniqueIds([...(doc.links || []), linkedId]);
+    }
+
+    function createBundleFromForecast(forecastDoc) {
+      const suffix = nowTimestamp().replace(/[-:\s]/g, "").slice(4, 12);
+      const purchasePlanId = `PP${suffix}${String(mockData.purchasePlanOrder.length + 1).padStart(2, "0")}`;
+      const replenishmentId = `RP${suffix}${String(mockData.replenishmentSuggestionOrder.length + 1).padStart(2, "0")}`;
+      const inventoryAlertId = `IA${suffix}${String(mockData.inventoryAlertOrder.length + 1).padStart(2, "0")}`;
+      const supplierAbnormalId = `SA${suffix}${String(mockData.supplierAbnormalOrder.length + 1).padStart(2, "0")}`;
+      const priceAbnormalId = `PA${suffix}${String(mockData.priceAbnormalOrder.length + 1).padStart(2, "0")}`;
+      const city = forecastDoc.city || "福州";
+      const location = forecastDoc.location || forecastDoc.object || `${city} 前置仓`;
+      const cycle = forecastDoc.forecastCycle || filterState.cycle;
+      const forecastSales = forecastDoc.forecastSales || 3240;
+      const skuCount = forecastDoc.skuCount || 18;
+
+      mockData.purchasePlanOrder.unshift({
+        id: purchasePlanId,
+        sourceId: forecastDoc.id,
+        module: "purchase",
+        tabKey: "purchasePlanOrder",
+        object: city === "上海" ? "水产 / 熟食" : city === "广州" ? "水果 / 乳品" : "蔬菜 / 肉禽蛋",
+        objectSub: city,
+        valueSummary: `采购金额 ¥${Math.round(forecastSales * 4.6).toLocaleString("zh-CN")}`,
+        status: "待确认",
+        createdAt: nowTimestamp(),
+        riskLevel: forecastDoc.riskLevel || "中",
+        city,
+        location,
+        category: "综合",
+        links: [forecastDoc.id, replenishmentId, supplierAbnormalId, priceAbnormalId],
+        basicInfo: [["计划日期", filterState.date], ["城市", city], ["计划周期", cycle], ["SKU 数量", `${skuCount}`]],
+        agentResult: [["建议采购总量", `${Math.round(forecastSales / 6)}`], ["预计采购金额", `¥${Math.round(forecastSales * 4.6).toLocaleString("zh-CN")}`], ["推荐供应商数", "3"], ["风险 SKU", "2"]],
+        riskJudgement: [["价格风险", "已识别"], ["质量风险", "低"], ["仓容影响", "低"], ["临期冲突", "无"]],
+        suggestedAction: [["建议动作", "确认后转采购申请单"]],
+        adjustments: [],
+        availableActions: ["view", "confirm", "adjust", "transfer"]
+      });
+
+      mockData.replenishmentSuggestionOrder.unshift({
+        id: replenishmentId,
+        sourceId: forecastDoc.id,
+        module: "replenishment",
+        tabKey: "replenishmentSuggestionOrder",
+        object: city === "深圳" ? "蓝莓" : city === "上海" ? "三文鱼切片" : "鸡蛋 30枚",
+        objectSub: location,
+        valueSummary: `建议补货 ${Math.round(forecastSales / 20)}`,
+        status: "待确认",
+        createdAt: nowTimestamp(),
+        riskLevel: forecastDoc.riskLevel || "中",
+        city,
+        location,
+        category: "综合",
+        links: [forecastDoc.id, purchasePlanId, inventoryAlertId],
+        basicInfo: [["当前库存", "18"], ["在途库存", "8"], ["预测销量", `${Math.round(forecastSales / 10)}`], ["安全库存", "16"]],
+        agentResult: [["建议补货量", `${Math.round(forecastSales / 20)}`], ["建议补货时间", "今日 15:00"], ["来源预测单", forecastDoc.id], ["来源采购计划", purchasePlanId]],
+        riskJudgement: [["风险等级", forecastDoc.riskLevel || "中"], ["风险类型", "缺货风险"], ["仓容影响", "低"], ["临期冲突", "无"]],
+        suggestedAction: [["建议动作", "确认后转补货任务单"]],
+        adjustments: [],
+        availableActions: ["view", "confirm", "adjust", "transfer"]
+      });
+
+      mockData.inventoryAlertOrder.unshift({
+        id: inventoryAlertId,
+        sourceId: replenishmentId,
+        module: "inventory",
+        tabKey: "inventoryAlertOrder",
+        object: city === "深圳" ? "蓝莓" : city === "上海" ? "三文鱼切片" : "鸡蛋 30枚",
+        objectSub: location,
+        valueSummary: "缺货预警 / 中",
+        status: "待确认",
+        createdAt: nowTimestamp(),
+        riskLevel: "中",
+        city,
+        location,
+        category: "综合",
+        links: [forecastDoc.id, replenishmentId],
+        basicInfo: [["当前库存", "18"], ["安全库存", "16"], ["预测销量", `${Math.round(forecastSales / 10)}`], ["预计可售天数", "0.8 天"]],
+        agentResult: [["预警类型", "缺货预警"], ["处理建议", "优先补货"], ["来源单据", replenishmentId], ["风险级别", "中"]],
+        riskJudgement: [["缺货风险", "中"], ["仓容风险", "低"], ["售后风险", "低"], ["报损风险", "低"]],
+        suggestedAction: [["建议动作", "联动补货建议单处理"]],
+        adjustments: [],
+        availableActions: ["view", "transfer"]
+      });
+
+      mockData.supplierAbnormalOrder.unshift({
+        id: supplierAbnormalId,
+        sourceId: purchasePlanId,
+        module: "supplier",
+        tabKey: "supplierAbnormalOrder",
+        object: `${city} 供应商池`,
+        objectSub: "报价波动",
+        valueSummary: "影响 1 个仓网",
+        status: "待确认",
+        createdAt: nowTimestamp(),
+        riskLevel: "中",
+        city,
+        location,
+        category: "综合",
+        links: [purchasePlanId, priceAbnormalId],
+        basicInfo: [["异常类型", "报价波动"], ["影响范围", "1 个仓网"], ["处理建议", "价格确认"], ["来源计划", purchasePlanId]],
+        agentResult: [["价格波动", "+8.2%"], ["关联采购计划", purchasePlanId], ["关联价格异常", priceAbnormalId], ["状态", "待确认"]],
+        riskJudgement: [["供应风险", "中"], ["质量风险", "低"], ["价格风险", "中"], ["履约影响", "中"]],
+        suggestedAction: [["建议动作", "确认后选择替代报价"]],
+        adjustments: [],
+        availableActions: ["view", "confirm"]
+      });
+
+      mockData.priceAbnormalOrder.unshift({
+        id: priceAbnormalId,
+        sourceId: supplierAbnormalId,
+        module: "supplier",
+        tabKey: "priceAbnormalOrder",
+        object: city === "深圳" ? "蓝莓" : city === "上海" ? "三文鱼切片" : "鸡蛋 30枚",
+        objectSub: `${city} 供应商池`,
+        valueSummary: "涨幅 18.2%",
+        status: "待确认",
+        createdAt: nowTimestamp(),
+        riskLevel: "高",
+        city,
+        location,
+        category: "综合",
+        links: [purchasePlanId, supplierAbnormalId],
+        basicInfo: [["当前报价", "¥22.8"], ["7 日均价", "¥19.3"], ["涨幅", "18.2%"], ["是否超阈值", "是"]],
+        agentResult: [["处理建议", "需人工确认价格风险"], ["关联采购计划", purchasePlanId], ["来源异常单", supplierAbnormalId], ["预警级别", "高"]],
+        riskJudgement: [["价格风险", "高"], ["替代供应商", "1 家"], ["质量风险", "低"], ["履约影响", "中"]],
+        suggestedAction: [["建议动作", "确认后选择是否锁价采购"]],
+        adjustments: [],
+        availableActions: ["view", "confirm", "close"]
+      });
+
+      forecastDoc.links = uniqueIds([...(forecastDoc.links || []), purchasePlanId, replenishmentId, inventoryAlertId, supplierAbnormalId, priceAbnormalId]);
+      appendLink(purchasePlanId, replenishmentId);
+      appendLink(replenishmentId, inventoryAlertId);
+
+      return { purchasePlanId, replenishmentId, inventoryAlertId, supplierAbnormalId, priceAbnormalId };
+    }
+
     function renderMetrics() {
       metricsRowEl.innerHTML = metrics.map(item => `
         <div class="metric-card">
@@ -1672,23 +1838,6 @@
           </div>
         </div>
       `).join("");
-    }
-
-    function renderModules() {
-      moduleGridEl.innerHTML = Object.entries(modules).map(([key, module]) => {
-        const stats = getModuleStats(key);
-        return `
-          <div class="module-card ${key === currentModule ? "active" : ""}" data-module-card="${key}">
-            <div class="module-title">${module.name}</div>
-            <div class="module-items">
-              <div class="module-item"><span>今日新增单据数</span><strong>${stats.newCount}</strong></div>
-              <div class="module-item"><span>待处理单据数</span><strong>${stats.pendingCount}</strong></div>
-              <div class="module-item"><span>异常单据数</span><strong>${stats.abnormalCount}</strong></div>
-              <div class="module-item"><span>最近更新时间</span><strong>${stats.latestTime.slice(11)}</strong></div>
-            </div>
-          </div>
-        `;
-      }).join("");
     }
 
     function renderDocumentTabs() {
@@ -1827,17 +1976,6 @@
       `).join("");
     }
 
-    function syncCollapsiblePanels() {
-      [moduleWorkbenchPanelEl].forEach(panel => {
-        const collapsed = panelCollapsedState[panel.id];
-        panel.classList.toggle("panel-collapsed", collapsed);
-        const toggleBtn = panel.querySelector("[data-toggle-panel]");
-        if (toggleBtn) {
-          toggleBtn.textContent = collapsed ? "展开" : "收起";
-        }
-      });
-    }
-
     function openDetailDrawer(docId) {
       const doc = findDocumentById(docId);
       if (!doc) return;
@@ -1847,6 +1985,8 @@
       const suggestedAction = doc.suggestedAction || [];
       const adjustments = doc.adjustments || [];
       const links = doc.links || [];
+      const { upstreamIds, downstreamIds, relatedIds } = getDocumentChains(doc);
+      const showRuntimeChains = runtimeFlowDocIds.includes(doc.id);
       selectedDocumentId = docId;
       drawerTitleEl.textContent = `${modules[doc.module].name} · ${modules[doc.module].tabs.find(tab => tab.key === doc.tabKey).label}`;
       drawerHintEl.textContent = `${doc.id} · ${doc.status} · ${doc.createdAt}`;
@@ -1882,10 +2022,28 @@
           <h4>人工调整记录</h4>
           <div class="detail-grid">${(adjustments.length ? adjustments : [["暂无调整", "当前无人工调整记录"]]).map(item => `<div class="detail-item"><div class="label">${item[0]}</div><div class="value">${item[1]}${item[2] ? ` · ${item[2]}` : ""}</div></div>`).join("")}</div>
         </section>
+        ${showRuntimeChains ? `
+        <section class="detail-section">
+          <h4>上游单据</h4>
+          <div class="link-chain">${(upstreamIds.length ? upstreamIds : ["无上游单据"]).map(link => findDocumentById(link) ? `<span class="link-chip" data-link-doc="${link}">${link}</span>` : `<span class="link-chip">${link}</span>`).join("")}</div>
+        </section>
+        <section class="detail-section">
+          <h4>下游单据</h4>
+          <div class="link-chain">${(downstreamIds.length ? downstreamIds : ["无下游单据"]).map(link => findDocumentById(link) ? `<span class="link-chip" data-link-doc="${link}">${link}</span>` : `<span class="link-chip">${link}</span>`).join("")}</div>
+        </section>
         <section class="detail-section">
           <h4>关联单据</h4>
-          <div class="link-chain">${(links.length ? links : ["无关联单据"]).map(link => findDocumentById(link) ? `<span class="link-chip" data-link-doc="${link}">${link}</span>` : `<span class="link-chip">${link}</span>`).join("")}</div>
+          <div class="link-chain">${(relatedIds.length ? relatedIds : links.length ? links : ["无关联单据"]).map(link => findDocumentById(link) ? `<span class="link-chip" data-link-doc="${link}">${link}</span>` : `<span class="link-chip">${link}</span>`).join("")}</div>
         </section>
+        ` : `
+        <section class="detail-section">
+          <h4>关联单据</h4>
+          <div class="detail-grid">
+            <div class="detail-item"><div class="label">当前状态</div><div class="value">尚未触发真实业务流</div></div>
+            <div class="detail-item"><div class="label">显示规则</div><div class="value">执行确认生成、转单或重新生成后展示关联关系</div></div>
+          </div>
+        </section>
+        `}
       `;
       detailDrawerMaskEl.classList.add("show");
       renderDocumentTable();
@@ -1921,6 +2079,18 @@
       if (!doc || doc.status === "已确认") return;
       const before = doc.status;
       doc.status = "已确认";
+      if (doc.tabKey === "forecastOrder") {
+        const existingDownstream = getDescendantIds(doc.id);
+        if (!existingDownstream.length) {
+          const generated = createBundleFromForecast(doc);
+          markRuntimeFlow([doc.id, generated.purchasePlanId, generated.replenishmentId, generated.inventoryAlertId, generated.supplierAbnormalId, generated.priceAbnormalId]);
+          addRecord("确认并生成单据", doc.id, before, `已确认，并生成 ${generated.purchasePlanId} / ${generated.replenishmentId}`, "完成");
+          createToast("已确认需求预测单，并生成采购计划、补货建议、库存预警和供应商风险单据");
+          renderAll();
+          return;
+        }
+      }
+      markRuntimeFlow([doc.id]);
       addRecord("确认单据", doc.id, before, doc.status, "已确认");
       createToast("已确认该业务单据");
       renderAll();
@@ -1935,6 +2105,7 @@
       doc.valueSummary = doc.valueSummary.includes("¥") ? `调整金额 ¥${qty.toLocaleString("zh-CN")}` : `${doc.valueSummary.split(" ")[0]} ${qty}`;
       doc.status = "已调整";
       doc.adjustments.unshift([nowTimestamp(), "采购计划员 江鑫", `${remark}：${beforeSummary} → ${doc.valueSummary}`]);
+      markRuntimeFlow([doc.id]);
       addRecord("调整单据", doc.id, beforeSummary, doc.valueSummary, "已调整");
       closeAdjustModal();
       createToast("已更新该单据的人工调整结果");
@@ -1946,6 +2117,7 @@
       if (!doc) return;
       const before = doc.status;
       doc.status = "已关闭";
+      markRuntimeFlow([doc.id]);
       addRecord("关闭单据", doc.id, before, doc.status, "已关闭");
       createToast("该单据已关闭");
       renderAll();
@@ -1978,6 +2150,7 @@
         });
         doc.status = "已关闭";
         if (!doc.links.includes(newId)) doc.links.push(newId);
+        markRuntimeFlow([doc.id, newId]);
         addRecord("转采购申请", doc.id, "采购计划单", newId, "完成");
         createToast("已根据采购计划单生成采购申请单");
       } else if (doc.tabKey === "purchaseRequestOrder") {
@@ -2003,6 +2176,7 @@
         });
         doc.status = "已关闭";
         if (!doc.links.includes(newId)) doc.links.push(newId);
+        markRuntimeFlow([doc.id, newId]);
         addRecord("转采购订单", doc.id, "采购申请单", newId, "完成");
         createToast("已根据采购申请单生成采购订单");
       } else if (doc.tabKey === "replenishmentSuggestionOrder") {
@@ -2028,6 +2202,7 @@
         });
         doc.status = "已关闭";
         if (!doc.links.includes(newId)) doc.links.push(newId);
+        markRuntimeFlow([doc.id, newId]);
         addRecord("转补货任务", doc.id, "补货建议单", newId, "完成");
         createToast("已根据补货建议单生成补货任务单");
       } else if (doc.tabKey === "inventoryAlertOrder") {
@@ -2053,6 +2228,7 @@
             availableActions: ["view", "confirm", "close"]
           });
           if (!doc.links.includes(newId)) doc.links.push(newId);
+          markRuntimeFlow([doc.id, newId]);
           addRecord("转临期处理", doc.id, "库存预警单", newId, "完成");
           createToast("已根据临期预警生成临期处理单");
         } else {
@@ -2077,6 +2253,7 @@
             availableActions: ["view", "confirm", "transfer"]
           });
           if (!doc.links.includes(newId)) doc.links.push(newId);
+          markRuntimeFlow([doc.id, newId]);
           addRecord("转补货建议", doc.id, "库存预警单", newId, "完成");
           createToast("已根据缺货预警生成补货建议单");
         }
@@ -2091,6 +2268,39 @@
       addRecord("提交执行", "批量单据", "-", `${executable.length} 条单据进入执行审批`, "待审批");
       createToast(`已提交 ${executable.length} 条业务单据，等待主管审批`);
       setBottomTab("records");
+    }
+
+    function resetFiltersOnly() {
+      filterState.date = initialFilterStateSnapshot.date;
+      filterState.city = initialFilterStateSnapshot.city;
+      filterState.location = initialFilterStateSnapshot.location;
+      filterState.category = initialFilterStateSnapshot.category;
+      filterState.cycle = initialFilterStateSnapshot.cycle;
+      filterState.status = initialFilterStateSnapshot.status;
+      filterDateEl.value = filterState.date;
+      filterCityEl.value = filterState.city;
+      filterLocationEl.value = filterState.location;
+      filterCategoryEl.value = filterState.category;
+      filterCycleEl.value = filterState.cycle;
+      filterStatusEl.value = filterState.status;
+    }
+
+    function resetAllDemoData() {
+      metrics.splice(0, metrics.length, ...cloneData(initialMetricsSnapshot));
+      Object.keys(mockData).forEach(key => delete mockData[key]);
+      Object.assign(mockData, cloneData(initialMockDataSnapshot));
+      executionRecords = cloneData(initialExecutionRecordsSnapshot);
+      runtimeFlowDocIds = [];
+      currentModule = initialUiStateSnapshot.currentModule;
+      currentTab = initialUiStateSnapshot.currentTab;
+      selectedDocumentId = initialUiStateSnapshot.selectedDocumentId;
+      editingDocumentId = null;
+      resetFiltersOnly();
+      closeAdjustModal();
+      closeDrawer();
+      setBottomTab("sources");
+      renderAll();
+      createToast("已重置所有演示数据与单据操作");
     }
 
     function regenerateSuggestions() {
@@ -2129,27 +2339,8 @@
         availableActions: ["view", "confirm"]
       });
 
-      const newPlanId = `PP20260622${String(mockData.purchasePlanOrder.length + 1).padStart(3, "0")}`;
-      const newRpId = `RP20260622${String(mockData.replenishmentSuggestionOrder.length + 1).padStart(3, "0")}`;
-      const newIaId = `IA20260622${String(mockData.inventoryAlertOrder.length + 1).padStart(3, "0")}`;
-      const newSaId = `SA20260622${String(mockData.supplierAbnormalOrder.length + 1).padStart(3, "0")}`;
-      const newPaId = `PA20260622${String(mockData.priceAbnormalOrder.length + 1).padStart(3, "0")}`;
-
-      mockData.purchasePlanOrder.unshift({
-        id: newPlanId, sourceId: newForecastId, module: "purchase", tabKey: "purchasePlanOrder", object: "水果 / 肉禽蛋", objectSub: "深圳", valueSummary: "采购金额 ¥21,640", status: "待确认", createdAt: nowTimestamp(), riskLevel: "中", links: [newForecastId, newPaId], basicInfo: [["计划日期", filterState.date], ["城市", "深圳"], ["品类", "水果 / 肉禽蛋"], ["SKU 数量", "10"]], agentResult: [["建议采购总量", "540"], ["预计采购金额", "¥21,640"], ["推荐供应商数", "3"], ["风险 SKU", "2"]], riskJudgement: [["价格风险", "蓝莓报价波动"], ["质量风险", "低"], ["仓容影响", "低"], ["临期冲突", "无"]], suggestedAction: [["建议动作", "确认后转采购申请单"]], adjustments: [], availableActions: ["view", "confirm", "adjust", "transfer"]
-      });
-      mockData.replenishmentSuggestionOrder.unshift({
-        id: newRpId, sourceId: newForecastId, module: "replenishment", tabKey: "replenishmentSuggestionOrder", object: "蓝莓", objectSub: "深圳 D 前置仓", valueSummary: "建议补货 96", status: "待确认", createdAt: nowTimestamp(), riskLevel: "中", links: [newForecastId, newPlanId], basicInfo: [["当前库存", "14"], ["在途库存", "8"], ["预测销量", "31"], ["安全库存", "14"]], agentResult: [["建议补货量", "96"], ["建议补货时间", "今日 15:00"], ["来源预测单", newForecastId], ["来源采购计划", newPlanId]], riskJudgement: [["风险等级", "中"], ["风险类型", "缺货风险"], ["仓容影响", "低"], ["临期冲突", "无"]], suggestedAction: [["建议动作", "确认后转补货任务单"]], adjustments: [], availableActions: ["view", "confirm", "adjust", "transfer"]
-      });
-      mockData.inventoryAlertOrder.unshift({
-        id: newIaId, sourceId: newRpId, module: "inventory", tabKey: "inventoryAlertOrder", object: "蓝莓", objectSub: "深圳 D 前置仓", valueSummary: "缺货预警 / 中", status: "待确认", createdAt: nowTimestamp(), riskLevel: "中", links: [newRpId], basicInfo: [["当前库存", "14"], ["安全库存", "14"], ["预测销量", "31"], ["预计可售天数", "0.7 天"]], agentResult: [["预警类型", "缺货预警"], ["处理建议", "优先补货"], ["来源单据", newRpId], ["风险级别", "中"]], riskJudgement: [["缺货风险", "中"], ["仓容风险", "低"], ["售后风险", "低"], ["报损风险", "低"]], suggestedAction: [["建议动作", "联动补货建议单处理"]], adjustments: [], availableActions: ["view", "transfer"]
-      });
-      mockData.supplierAbnormalOrder.unshift({
-        id: newSaId, sourceId: newPlanId, module: "supplier", tabKey: "supplierAbnormalOrder", object: "深圳水果供应", objectSub: "蓝莓", valueSummary: "影响 1 个前置仓", status: "待确认", createdAt: nowTimestamp(), riskLevel: "中", links: [newPlanId, newPaId], basicInfo: [["异常类型", "报价波动"], ["SKU", "蓝莓"], ["影响范围", "1 个前置仓"], ["处理建议", "价格确认"]], agentResult: [["价格波动", "+8.2%"], ["关联采购计划", newPlanId], ["关联价格异常", newPaId], ["状态", "待确认"]], riskJudgement: [["供应风险", "中"], ["质量风险", "低"], ["价格风险", "中"], ["履约影响", "中"]], suggestedAction: [["建议动作", "确认后选择替代报价"]], adjustments: [], availableActions: ["view", "confirm"]
-      });
-      mockData.priceAbnormalOrder.unshift({
-        id: newPaId, sourceId: newSaId, module: "supplier", tabKey: "priceAbnormalOrder", object: "蓝莓", objectSub: "深圳水果供应", valueSummary: "涨幅 18.2%", status: "待确认", createdAt: nowTimestamp(), riskLevel: "高", links: [newPlanId, newSaId], basicInfo: [["当前报价", "¥22.8"], ["7 日均价", "¥19.3"], ["涨幅", "18.2%"], ["是否超阈值", "是"]], agentResult: [["处理建议", "需人工确认价格风险"], ["关联采购计划", newPlanId], ["供应商", "深圳水果供应"], ["预警级别", "高"]], riskJudgement: [["价格风险", "高"], ["替代供应商", "1 家"], ["质量风险", "低"], ["履约影响", "中"]], suggestedAction: [["建议动作", "确认后选择是否锁价采购"]], adjustments: [], availableActions: ["view", "confirm", "close"]
-      });
+      const generated = createBundleFromForecast(mockData.forecastOrder[0]);
+      markRuntimeFlow([newForecastId, generated.purchasePlanId, generated.replenishmentId, generated.inventoryAlertId, generated.supplierAbnormalId, generated.priceAbnormalId]);
 
       addRecord("生成建议", "批量单据", "-", "新增预测、采购、补货、预警、异常单据", "完成");
       createToast("Agent 已生成需求预测单、采购计划单、补货建议单及风险预警单");
@@ -2171,7 +2362,6 @@
 
     function renderAll() {
       renderMetrics();
-      renderModules();
       renderDocumentTabs();
       renderWorkbenchMeta();
       renderDocumentTable();
@@ -2179,7 +2369,6 @@
       renderRules();
       renderSources();
       renderFeedbackLoop();
-      syncCollapsiblePanels();
       document.querySelectorAll(".menu-item").forEach(item => item.classList.toggle("active", item.dataset.module === currentModule));
     }
 
@@ -2194,40 +2383,16 @@
       generateBtnEl.addEventListener("click", regenerateSuggestions);
       submitExecutionBtnEl.addEventListener("click", submitExecution);
       resetFilterBtnEl.addEventListener("click", () => {
-        filterState.date = "2026-06-22";
-        filterState.city = "all";
-        filterState.location = "all";
-        filterState.category = "all";
-        filterState.cycle = "明日";
-        filterState.status = "all";
-        filterDateEl.value = filterState.date;
-        filterCityEl.value = filterState.city;
-        filterLocationEl.value = filterState.location;
-        filterCategoryEl.value = filterState.category;
-        filterCycleEl.value = filterState.cycle;
-        filterStatusEl.value = filterState.status;
+        resetFiltersOnly();
         renderDocumentTable();
         renderWorkbenchMeta();
       });
+      globalResetBtnEl.addEventListener("click", resetAllDemoData);
 
       sideMenuEl.addEventListener("click", event => {
         const item = event.target.closest("[data-module]");
         if (!item) return;
         setModule(item.dataset.module);
-      });
-
-      document.addEventListener("click", event => {
-        const toggleBtn = event.target.closest("[data-toggle-panel]");
-        if (!toggleBtn) return;
-        const panelId = toggleBtn.dataset.togglePanel;
-        panelCollapsedState[panelId] = !panelCollapsedState[panelId];
-        syncCollapsiblePanels();
-      });
-
-      moduleGridEl.addEventListener("click", event => {
-        const card = event.target.closest("[data-module-card]");
-        if (!card) return;
-        setModule(card.dataset.moduleCard);
       });
 
       documentTabsEl.addEventListener("click", event => {
